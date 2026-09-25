@@ -86,18 +86,27 @@ export async function onRequestPost({ request, env }) {
       city, bio, skills, now, now, now, now, now
     ).run();
 
-    if (picture && typeof picture === "object" && picture.size) {
+    const avatarDataUrl = String(form.get("avatar_data_url") || "").trim();
+    if (avatarDataUrl) {
+      if (avatarDataUrl.length > 120000) {
+        await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+        return error("Profile image is too large. Please use a smaller crop.");
+      }
+      if (!/^data:image\/(webp|jpeg|png);base64,/i.test(avatarDataUrl)) {
+        await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+        return error("Profile image must be a processed image.");
+      }
+      await env.DB.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").bind(avatarDataUrl, userId).run();
+    } else if (picture && typeof picture === "object" && picture.size && env.AVATARS) {
       const contentType = String(picture.type || "");
       if (!contentType.startsWith("image/") || picture.size > 5 * 1024 * 1024) {
         await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
         return error("Profile picture must be an image smaller than 5 MB.");
       }
-      if (env.AVATARS) {
-        const extension = (contentType.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").slice(0, 6) || "jpg";
-        const key = "avatars/" + userId + "." + extension;
-        await env.AVATARS.put(key, picture.stream(), { httpMetadata: { contentType: contentType } });
-        await env.DB.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").bind(key, userId).run();
-      }
+      const extension = (contentType.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").slice(0, 6) || "jpg";
+      const key = "avatars/" + userId + "." + extension;
+      await env.AVATARS.put(key, picture.stream(), { httpMetadata: { contentType: contentType } });
+      await env.DB.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").bind(key, userId).run();
     }
 
     const rawToken = randomToken(32);
