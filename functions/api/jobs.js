@@ -32,9 +32,14 @@ export async function onRequestGet({ env, request }) {
   try {
     await ensureJobContactColumns(env);
     const viewer = await getSessionUser(env, request);
-    const result = await env.DB.prepare(
-      "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
-    ).all();
+    const mine = new URL(request.url).searchParams.get("mine") === "1";
+    if (mine && !viewer) return error("Please sign in to view your jobs.", 401);
+    const sql = mine
+      ? "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' AND c.owner_user_id = ? ORDER BY j.created_at DESC"
+      : "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC";
+    const result = mine
+      ? await env.DB.prepare(sql).bind(viewer.id).all()
+      : await env.DB.prepare(sql).all();
 
     return json({
       ok: true,
@@ -52,7 +57,8 @@ export async function onRequestGet({ env, request }) {
         thumbnail_url: row.thumbnail_url || null,
         contact_phone: row.contact_phone || null,
         contact_email: row.contact_email || null,
-        can_delete: Boolean(viewer && viewer.id === row.owner_user_id)
+        can_delete: Boolean(viewer && viewer.id === row.owner_user_id),
+        can_edit: Boolean(viewer && viewer.id === row.owner_user_id)
       }))
     });
   } catch (err) {
@@ -127,6 +133,66 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
+
+
+export async function onRequestPut({ request, env }) {
+  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  const user = await getSessionUser(env, request);
+  if (!user) return error("Please sign in before editing a job.", 401);
+
+  try {
+    await ensureJobContactColumns(env);
+    const url = new URL(request.url);
+    const jobId = String(url.searchParams.get("id") || "").trim();
+    if (!jobId) return error("Job id is required.");
+
+    const ownership = await env.DB.prepare(
+      "SELECT j.id, j.company_id, c.name AS company FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.id = ? AND c.owner_user_id = ? LIMIT 1"
+    ).bind(jobId, user.id).first();
+    if (!ownership) return error("You can only edit jobs that you posted.", 403);
+
+    const body = await request.json();
+    const title = String(body.title || "").trim();
+    const company = String(body.company || "").trim();
+    const location = String(body.location || "").trim();
+    const workType = String(body.workType || "");
+    const category = String(body.category || "");
+    const description = String(body.description || "").trim();
+    const thumbnailUrl = String(body.thumbnailUrl || "").trim();
+    const contactPhone = String(body.contactPhone || "").trim();
+    const contactEmail = String(body.contactEmail || "").trim();
+    const salaryMin = body.salaryMin == null || body.salaryMin === "" ? null : Number(body.salaryMin);
+    const salaryMax = body.salaryMax == null || body.salaryMax === "" ? null : Number(body.salaryMax);
+
+    if (title.length < 2 || title.length > 120) return error("Enter a valid job title.");
+    if (company.length < 2 || company.length > 100) return error("Enter a valid company name.");
+    if (location.length > 100) return error("Location is too long.");
+    if (thumbnailUrl.length > 300000) return error("Thumbnail image is too large. Please choose a smaller image.");
+    if (thumbnailUrl && !/^data:image\/(webp|jpeg|png);base64,/i.test(thumbnailUrl)) return error("Thumbnail must be a processed image.");
+    if (contactPhone.length < 5 || contactPhone.length > 40 || !/^\+?[0-9().\-\s]{5,40}$/.test(contactPhone)) return error("Enter a valid contact phone number.");
+    if (contactEmail.length < 5 || contactEmail.length > 160 || !/^\S+@\S+\.\S+$/.test(contactEmail)) return error("Enter a valid contact email address.");
+    if (!["Remote", "Hybrid", "On-site"].includes(workType)) return error("Choose a valid work type.");
+    if (!["Technology", "Design", "Marketing", "Sales", "Content"].includes(category)) return error("Choose a valid category.");
+    if (description.length < 20 || description.length > 4000) return error("Add a more detailed job description.");
+    if (salaryMin != null && (!Number.isFinite(salaryMin) || salaryMin < 0)) return error("Enter a valid minimum salary.");
+    if (salaryMax != null && (!Number.isFinite(salaryMax) || salaryMax < 0)) return error("Enter a valid maximum salary.");
+    if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) return error("Maximum salary cannot be lower than minimum salary.");
+
+    const slugBase = company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "company";
+    const slug = slugBase + "-" + ownership.company_id.slice(0, 8);
+    await env.DB.prepare(
+      "UPDATE companies SET name = ?, slug = ?, city = ?, industry = ? WHERE id = ? AND owner_user_id = ?"
+    ).bind(company, slug, location || null, category, ownership.company_id, user.id).run();
+
+    await env.DB.prepare(
+      "UPDATE jobs SET title = ?, location = ?, work_type = ?, category = ?, salary_min = ?, salary_max = ?, description = ?, thumbnail_url = ?, contact_phone = ?, contact_email = ? WHERE id = ?"
+    ).bind(title, location || null, workType, category, salaryMin, salaryMax, description, thumbnailUrl || null, contactPhone, contactEmail, jobId).run();
+
+    return json({ ok: true, message: "Job updated." });
+  } catch (err) {
+    return error(err && err.message ? err.message : "Unable to edit the job.", 500);
+  }
+}
 
 export async function onRequestDelete({ request, env }) {
   if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
