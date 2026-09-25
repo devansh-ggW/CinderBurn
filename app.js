@@ -73,7 +73,7 @@ function render() {
 
   if (!filtered.length) {
     const emptyTitle = mode === "jobs" ? "No jobs posted yet." : mode === "talent" ? "No public profiles yet." : "No companies listed yet.";
-    const emptyText = mode === "jobs" ? "Published jobs will appear here." : mode === "talent" ? "Verified members who make their profile discoverable will appear here." : "Companies created through CinderBurn will appear here.";
+    const emptyText = mode === "jobs" ? "Published jobs will appear here." : mode === "talent" ? "Verified member profiles will appear here." : "Companies created through CinderBurn will appear here.";
     results.innerHTML = '<div class="result-card"><div><div class="result-title">' + emptyTitle + '</div><div class="result-meta">' + emptyText + '</div></div></div>';
     return;
   }
@@ -113,7 +113,7 @@ async function loadJobs() {
     jobsLoaded = true;
   } catch {
     data.jobs = [];
-    jobsLoaded = false;
+    jobsLoaded = true;
   } finally {
     jobsLoading = false;
     render();
@@ -556,11 +556,17 @@ document.addEventListener("click", e => {
     (action === "View job" ? "Apply for this job" : action === "View profile" ? "Contact this person" : "View open roles") +
     '</button>');
   $("resultAction").addEventListener("click", () => {
-    showInfo("Demo action", "Applications, messaging and company actions will use the production backend as those features are added.");
+    if (action === "View job") {
+      showInfo("Applications", "The job is real and published in CinderBurn. Application submission will be connected next.");
+    } else {
+      showInfo("Profile", "This profile is loaded from the CinderBurn database.");
+    }
   });
 });
 
 bindAuthButtons();
 render();
 loadJobs();
+loadPeople();
+loadCompanies();
 loadSession();
