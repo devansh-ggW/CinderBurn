@@ -55,7 +55,17 @@ function getVisibleItems() {
   });
 }
 
+function updateLiveStats() {
+  const jobsEl = $("liveJobsCount");
+  const peopleEl = $("livePeopleCount");
+  const companiesEl = $("liveCompaniesCount");
+  if (jobsEl) jobsEl.textContent = String(data.jobs.length);
+  if (peopleEl) peopleEl.textContent = String(data.talent.length);
+  if (companiesEl) companiesEl.textContent = String(data.companies.length);
+}
+
 function render() {
+  updateLiveStats();
   if (mode === "jobs" && jobsLoading) {
     resultCount.textContent = "Loading jobs";
     results.innerHTML = '<div class="result-card"><div><div class="result-title">Loading jobs</div><div class="result-meta">Fetching current CinderBurn jobs.</div></div></div>';
@@ -273,7 +283,9 @@ function renderAuthActions() {
     bindAuthButtons();
     return;
   }
-  host.innerHTML = '<button class="account-chip" id="accountButton" type="button">' + avatarMarkup(currentUser, false) + '<span class="account-name">' + escapeHtml(currentUser.displayName || currentUser.name) + '</span></button>';
+  host.innerHTML = '<button class="btn btn-secondary edit-profile-top" id="editProfileTop" type="button">Edit profile</button>' +
+    '<button class="account-chip" id="accountButton" type="button">' + avatarMarkup(currentUser, false) + '<span class="account-name">' + escapeHtml(currentUser.displayName || currentUser.name) + '</span></button>';
+  $("editProfileTop").addEventListener("click", showEditProfile);
   $("accountButton").addEventListener("click", showProfile);
 }
 
