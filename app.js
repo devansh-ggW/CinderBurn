@@ -107,7 +107,9 @@ function render() {
       '<div class="tag-row">' + tags + '</div>' +
       '</div>' +
       '<div class="result-side"><div class="result-pay">' + escapeHtml(item.pay || "Salary not listed") + '</div>' +
-      '<button class="apply-btn" data-result-index="' + index + '" data-result-action="' + action + '">' + action + '</button></div>' +
+      '<button class="apply-btn" data-result-index="' + index + '" data-result-action="' + action + '">' + action + '</button>' +
+      (mode === "jobs" && item.can_delete ? '<button class="delete-job-btn" data-job-delete="' + escapeHtml(item.id) + '" type="button">Delete job</button>' : '') +
+      '</div>' +
       '</article>';
   }).join("");
 }
@@ -653,7 +655,32 @@ $("signupForm").addEventListener("submit", e => {
   else if (modalMode === "edit-profile") submitEditProfile();
 });
 
-document.addEventListener("click", e => {
+document.addEventListener("click", async e => {
+  const deleteButton = e.target.closest("[data-job-delete]");
+  if (deleteButton) {
+    const jobId = deleteButton.dataset.jobDelete;
+    if (!jobId) return;
+    if (!confirm("Delete this job? This cannot be undone.")) return;
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Deleting";
+    try {
+      const response = await fetch("/api/jobs?id=" + encodeURIComponent(jobId), {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Unable to delete the job.");
+      data.jobs = data.jobs.filter(job => job.id !== jobId);
+      render();
+    } catch (err) {
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Delete job";
+      alert(err.message || "Unable to delete the job.");
+    }
+    return;
+  }
+
   const button = e.target.closest("[data-result-action]");
   if (!button) return;
   const item = getVisibleItems()[Number(button.dataset.resultIndex)];
