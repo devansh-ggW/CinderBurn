@@ -167,6 +167,94 @@ function setFormStatus(id, message, bad) {
   el.classList.toggle("good", !bad);
 }
 
+
+let currentUser = null;
+
+function avatarMarkup(user, large) {
+  const fallback = String(user?.displayName || user?.name || "?").trim().slice(0,1).toUpperCase() || "?";
+  const localPicture = (() => {
+    try { return localStorage.getItem("cinderburn_profile_picture"); } catch { return null; }
+  })();
+  const src = user?.avatarUrl || localPicture;
+  const className = large ? "profile-avatar large" : "profile-avatar";
+  return src
+    ? '<div class="' + className + '"><img src="' + src + '" alt=""></div>'
+    : '<div class="' + className + '">' + fallback + '</div>';
+}
+
+function renderAuthActions() {
+  const host = $("authActions");
+  if (!host) return;
+  if (!currentUser) {
+    host.innerHTML = '<button class="btn btn-ghost" data-modal="signin">Sign in</button>' +
+      '<button class="btn btn-primary" data-modal="signup">Join CinderBurn</button>';
+    bindAuthButtons();
+    return;
+  }
+  host.innerHTML =
+    '<button class="account-chip" id="accountButton" type="button">' +
+      avatarMarkup(currentUser, false) +
+      '<span class="account-name">' + (currentUser.displayName || currentUser.name) + '</span>' +
+    '</button>';
+  $("accountButton").addEventListener("click", showProfile);
+}
+
+function bindAuthButtons() {
+  document.querySelectorAll('[data-modal]').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.dataset.modal === "signup") showSignup();
+      else {
+        modalMode = "signin";
+        setModal("Welcome back", "Sign in with your verified CinderBurn email.", loginFormHtml());
+      }
+    };
+  });
+}
+
+function profileFormHtml() {
+  return '<div class="profile-account-card">' +
+    avatarMarkup(currentUser, true) +
+    '<div><div class="profile-name">' + (currentUser.displayName || currentUser.name) + '</div>' +
+    '<div class="profile-email">' + currentUser.email + '</div></div></div>' +
+    '<div class="profile-grid">' +
+      '<div><span>Name</span><strong>' + (currentUser.name || "—") + '</strong></div>' +
+      '<div><span>City</span><strong>' + (currentUser.city || "Not added") + '</strong></div>' +
+      '<div><span>Country</span><strong>' + (currentUser.country || "IN") + '</strong></div>' +
+      '<div><span>Status</span><strong>Verified account</strong></div>' +
+    '</div>' +
+    '<button type="button" class="btn btn-secondary" id="signOutButton">Sign out</button>';
+}
+
+function showProfile() {
+  modalMode = "profile";
+  setModal("Your CinderBurn profile", "This is the account currently connected to this browser.", profileFormHtml());
+  $("signOutButton").addEventListener("click", signOut);
+}
+
+async function loadSession() {
+  try {
+    const response = await fetch("/api/login", { credentials: "same-origin", cache: "no-store" });
+    const body = await response.json();
+    currentUser = body.ok ? body.user : null;
+  } catch {
+    currentUser = null;
+  }
+  renderAuthActions();
+}
+
+async function signOut() {
+  try {
+    await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
+  } catch {}
+  currentUser = null;
+  try {
+    localStorage.removeItem("cinderburn_user");
+    localStorage.removeItem("cinderburn_profile_picture");
+  } catch {}
+  closeModal();
+  renderAuthActions();
+}
+
 function showInfo(title, text, actionText) {
   setModal(title, text, '<button type="button" class="btn btn-primary" id="modalDone">' + (actionText || "Continue") + '</button>');
   $("modalDone").addEventListener("click", closeModal);
@@ -212,8 +300,11 @@ async function submitLogin(form) {
       setFormStatus("formStatus", body.error || "Unable to sign in.", true);
       return;
     }
-    localStorage.setItem("cinderburn_user", JSON.stringify(body.user));
-    showInfo("You're signed in", "Welcome back, " + body.user.displayName + ". Your CinderBurn session is active.", "Done");
+    currentUser = body.user;
+    try { localStorage.setItem("cinderburn_user", JSON.stringify(body.user)); } catch {}
+    renderAuthActions();
+    showInfo("You're signed in", "Welcome back, " + body.user.displayName + ". Your profile is now active on this device.", "View profile");
+    $("modalDone").onclick = () => { closeModal(); showProfile(); };
   } catch {
     setFormStatus("formStatus", "Network error. Please try again.", true);
   }
@@ -223,6 +314,7 @@ document.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", (
   mode = btn.dataset.mode;
   document.querySelectorAll(".seg").forEach(b => b.classList.toggle("active", b === btn));
   render();
+loadSession();
 }));
 
 document.querySelectorAll(".search-chips button").forEach(btn => btn.addEventListener("click", () => {
