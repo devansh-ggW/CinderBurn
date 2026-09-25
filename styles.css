@@ -168,3 +168,8 @@ button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
   .job-detail-grid,.job-contact-grid{grid-template-columns:1fr}
   .image-dropzone{min-height:130px}
 }
+
+
+.delete-job-btn{width:100%;margin-top:7px;border:1px solid #5a2620;background:#21100e;color:#ff9b8d;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:750;cursor:pointer}
+.delete-job-btn:hover{border-color:#ff6047;background:#2a1311;color:#ffb0a4}
+.delete-job-btn:disabled{opacity:.55;cursor:wait}
