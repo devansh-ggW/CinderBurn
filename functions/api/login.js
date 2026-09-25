@@ -14,7 +14,7 @@ export async function onRequestPost({ request, env }) {
     const password = String(body.password || "");
 
     const user = await env.DB.prepare(
-      "SELECT id, name, display_name, email, password_salt, password_hash, email_verified, country_code, city, avatar_url FROM users WHERE email = ?"
+      "SELECT id, name, display_name, email, password_salt, password_hash, email_verified, country_code, city, bio, skills_text, avatar_url FROM users WHERE email = ?"
     ).bind(email).first();
 
     if (!user || !user.password_hash || !(await verifyPassword(password, user.password_salt, user.password_hash))) {
@@ -40,7 +40,9 @@ export async function onRequestPost({ request, env }) {
         email: user.email,
         city: user.city,
         country: user.country_code,
-        avatarUrl: user.avatar_url
+        avatarUrl: user.avatar_url,
+        skills: user.skills_text || "",
+        bio: user.bio || ""
       }
     }, 200, {
       "Set-Cookie": cookie("cinderburn_session", rawSession, { maxAge: 30 * 24 * 60 * 60 }),
@@ -59,10 +61,10 @@ export async function onRequestGet({ request, env }) {
 
   const hash = await sha256Hex(rawSession);
   const row = await env.DB.prepare(
-    "SELECT u.id, u.name, u.display_name, u.email, u.city, u.country_code, u.avatar_url FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.email_verified = 1"
+    "SELECT u.id, u.name, u.display_name, u.email, u.city, u.country_code, u.avatar_url, u.bio, u.skills_text FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.email_verified = 1"
   ).bind(hash, new Date().toISOString()).first();
 
   return row ? json({ ok: true, user: {
-    id: row.id, name: row.name, displayName: row.display_name, email: row.email, city: row.city, country: row.country_code, avatarUrl: row.avatar_url
+    id: row.id, name: row.name, displayName: row.display_name, email: row.email, city: row.city, country: row.country_code, avatarUrl: row.avatar_url, skills: row.skills_text || "", bio: row.bio || ""
   }}) : json({ ok: false, user: null });
 }
