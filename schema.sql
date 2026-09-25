@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   category TEXT NOT NULL DEFAULT 'Technology',
   salary_min INTEGER,
   salary_max INTEGER,
+  thumbnail_url TEXT,
+  contact_phone TEXT,
+  contact_email TEXT,
   status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE
