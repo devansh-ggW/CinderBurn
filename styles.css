@@ -38,3 +38,13 @@
 .profile-grid>div{border:1px solid #242427;background:#0d0d0f;border-radius:10px;padding:11px}
 .profile-grid span{display:block;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .profile-grid strong{font-size:12px}
+
+.job-result-card{grid-template-columns:92px minmax(0,1fr) auto;align-items:stretch}
+.job-thumb{width:92px;min-height:92px;border-radius:12px;border:1px solid #29292d;background:#171719;display:grid;place-items:center;overflow:hidden;color:#777;font-weight:800}
+.job-thumb img{width:100%;height:100%;min-height:92px;object-fit:cover;display:block}
+.job-thumbnail-field{display:grid;gap:7px}
+.job-thumbnail-preview{width:100%;height:140px;border:1px dashed #303036;border-radius:12px;background:#0d0d0f;display:grid;place-items:center;overflow:hidden;color:#666}
+.job-thumbnail-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.job-thumbnail-preview span{font-size:11px;color:#666}
+.split-note{font-size:12px;color:#77716c;line-height:1.5;max-width:460px}
+@media(max-width:620px){.job-result-card{grid-template-columns:72px 1fr}.job-result-card .result-side{grid-column:1/-1}.job-thumb{width:72px;min-height:72px}.job-thumb img{min-height:72px}}
