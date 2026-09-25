@@ -13,6 +13,41 @@ async function getSessionUser(env, request) {
   ).bind(hash, new Date().toISOString()).first();
 }
 
+export async function onRequestGet({ env }) {
+  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  try {
+    const result = await env.DB.prepare(
+      "SELECT j.id, j.title, c.name AS company, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
+    ).all();
+
+    return json({
+      ok: true,
+      jobs: (result.results || []).map(row => ({
+        id: row.id,
+        title: row.title,
+        company: row.company,
+        location: row.location,
+        type: row.work_type,
+        category: row.category,
+        exp: "",
+        pay: row.salary_min != null || row.salary_max != null ? formatSalary(row.salary_min, row.salary_max) : "Salary not listed",
+        tags: [],
+        description: row.description || "",
+        thumbnail_url: row.thumbnail_url || null
+      }))
+    });
+  } catch (err) {
+    return error(err && err.message ? err.message : "Unable to load jobs.", 500);
+  }
+}
+
+function formatSalary(min, max) {
+  if (min == null && max == null) return "Salary not listed";
+  if (min != null && max != null) return "₹" + Number(min).toLocaleString("en-IN") + "–₹" + Number(max).toLocaleString("en-IN");
+  if (min != null) return "From ₹" + Number(min).toLocaleString("en-IN");
+  return "Up to ₹" + Number(max).toLocaleString("en-IN");
+}
+
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
   const user = await getSessionUser(env, request);
@@ -26,12 +61,15 @@ export async function onRequestPost({ request, env }) {
     const workType = String(body.workType || "");
     const category = String(body.category || "");
     const description = String(body.description || "").trim();
+    const thumbnailUrl = String(body.thumbnailUrl || "").trim();
     const salaryMin = body.salaryMin == null || body.salaryMin === "" ? null : Number(body.salaryMin);
     const salaryMax = body.salaryMax == null || body.salaryMax === "" ? null : Number(body.salaryMax);
 
     if (title.length < 2 || title.length > 120) return error("Enter a valid job title.");
     if (company.length < 2 || company.length > 100) return error("Enter a valid company name.");
     if (location.length > 100) return error("Location is too long.");
+    if (thumbnailUrl.length > 1000) return error("Thumbnail URL is too long.");
+    if (thumbnailUrl && !/^https?:\\/\\//i.test(thumbnailUrl)) return error("Thumbnail must be a valid http or https URL.");
     if (!["Remote", "Hybrid", "On-site"].includes(workType)) return error("Choose a valid work type.");
     if (!["Technology", "Design", "Marketing", "Sales", "Content"].includes(category)) return error("Choose a valid category.");
     if (description.length < 20 || description.length > 4000) return error("Add a more detailed job description.");
@@ -55,8 +93,8 @@ export async function onRequestPost({ request, env }) {
 
     const jobId = crypto.randomUUID();
     await env.DB.prepare(
-      "INSERT INTO jobs (id, company_id, title, description, country_code, location, work_type, category, salary_min, salary_max, status) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, 'open')"
-    ).bind(jobId, companyRow.id, title, description, location || null, workType, category, salaryMin, salaryMax).run();
+      "INSERT INTO jobs (id, company_id, title, description, country_code, location, work_type, category, salary_min, salary_max, thumbnail_url, status) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, 'open')"
+    ).bind(jobId, companyRow.id, title, description, location || null, workType, category, salaryMin, salaryMax, thumbnailUrl || null).run();
 
     return json({ ok: true, message: "Your job has been published." }, 201);
   } catch (err) {
