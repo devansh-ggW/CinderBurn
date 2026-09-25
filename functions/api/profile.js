@@ -38,13 +38,16 @@ export async function onRequestPost({ request, env }) {
     const city = String(body.city || "").trim();
     const skills = String(body.skills || "").trim();
     const bio = String(body.bio || "").trim();
+    const avatarDataUrl = String(body.avatarDataUrl || "").trim();
 
     if (displayName.length < 2 || displayName.length > 40) return error("Display name must be 2 to 40 characters.");
     if (city.length > 80 || skills.length > 500 || bio.length > 1200) return error("One of your fields is too long.");
+    if (avatarDataUrl.length > 120000) return error("Profile image is too large. Please use a smaller crop.");
+    if (avatarDataUrl && !/^data:image\/(webp|jpeg|png);base64,/i.test(avatarDataUrl)) return error("Profile image must be a processed image.");
 
     await env.DB.prepare(
-      "UPDATE users SET display_name = ?, city = ?, skills_text = ?, bio = ? WHERE id = ?"
-    ).bind(displayName, city || null, skills || null, bio || null, row.id).run();
+      "UPDATE users SET display_name = ?, city = ?, skills_text = ?, bio = ?, avatar_url = CASE WHEN ? <> '' THEN ? ELSE avatar_url END WHERE id = ?"
+    ).bind(displayName, city || null, skills || null, bio || null, avatarDataUrl, avatarDataUrl, row.id).run();
 
     const updated = await env.DB.prepare(
       "SELECT id, name, display_name, email, city, country_code, avatar_url, skills_text, bio FROM users WHERE id = ?"
