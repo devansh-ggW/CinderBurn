@@ -12,14 +12,16 @@ export async function onRequestGet({ env }) {
       people: (result.results || []).map(row => ({
         id: row.id,
         title: row.display_name,
-        company: "CinderBurn member",
+        full_name: row.name,
+        company: "DEWIFY member",
         location: row.city || "Location not listed",
+        country: row.country_code || "IN",
         type: "Member",
         category: "People",
         exp: "",
         pay: "Profile",
         tags: String(row.skills_text || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 6),
-        description: row.bio || "CinderBurn member.",
+        description: row.bio || "DEWIFY member.",
         avatar_url: row.avatar_url || null
       }))
     });
