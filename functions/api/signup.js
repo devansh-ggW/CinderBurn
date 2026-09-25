@@ -80,7 +80,7 @@ export async function onRequestPost({ request, env }) {
       "INSERT INTO users (id, name, display_name, email, password_salt, password_hash, date_of_birth, country_code, city, bio, skills_text, avatar_url, email_verified, terms_accepted_at, privacy_accepted_at, safety_accepted_at, accuracy_accepted_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'IN', ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?)"
     ).bind(
       userId, name, displayName, email, passwordData.salt, passwordData.hash, dob,
-      city, bio, skills, now, now, now, now
+      city, bio, skills, now, now, now, now, now
     ).run();
 
     if (picture && typeof picture === "object" && picture.size) {
