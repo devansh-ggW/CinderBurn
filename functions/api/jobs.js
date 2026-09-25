@@ -28,15 +28,15 @@ async function getSessionUser(env, request) {
 }
 
 export async function onRequestGet({ env, request }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   try {
     await ensureJobContactColumns(env);
     const viewer = await getSessionUser(env, request);
     const mine = new URL(request.url).searchParams.get("mine") === "1";
     if (mine && !viewer) return error("Please sign in to view your jobs.", 401);
     const sql = mine
-      ? "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' AND c.owner_user_id = ? ORDER BY j.created_at DESC"
-      : "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC";
+      ? "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email, u.name AS poster_name, u.display_name AS poster_display_name, u.city AS poster_city, u.country_code AS poster_country, u.skills_text AS poster_skills, u.bio AS poster_bio, u.avatar_url AS poster_avatar_url FROM jobs j JOIN companies c ON c.id = j.company_id JOIN users u ON u.id = c.owner_user_id WHERE j.status = 'open' AND c.owner_user_id = ? ORDER BY j.created_at DESC"
+      : "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email, u.name AS poster_name, u.display_name AS poster_display_name, u.city AS poster_city, u.country_code AS poster_country, u.skills_text AS poster_skills, u.bio AS poster_bio, u.avatar_url AS poster_avatar_url FROM jobs j JOIN companies c ON c.id = j.company_id JOIN users u ON u.id = c.owner_user_id WHERE j.status = 'open' ORDER BY j.created_at DESC";
     const result = mine
       ? await env.DB.prepare(sql).bind(viewer.id).all()
       : await env.DB.prepare(sql).all();
@@ -59,6 +59,14 @@ export async function onRequestGet({ env, request }) {
         thumbnail_url: row.thumbnail_url || null,
         contact_phone: row.contact_phone || null,
         contact_email: row.contact_email || null,
+        poster_user_id: row.owner_user_id,
+        poster_name: row.poster_name || null,
+        poster_display_name: row.poster_display_name || null,
+        poster_city: row.poster_city || null,
+        poster_country: row.poster_country || "IN",
+        poster_skills: row.poster_skills || "",
+        poster_bio: row.poster_bio || "",
+        poster_avatar_url: row.poster_avatar_url || null,
         can_delete: Boolean(viewer && viewer.id === row.owner_user_id),
         can_edit: Boolean(viewer && viewer.id === row.owner_user_id)
       }))
@@ -76,7 +84,7 @@ function formatSalary(min, max) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   const user = await getSessionUser(env, request);
   if (!user) return error("Please sign in before posting a job.", 401);
 
@@ -138,7 +146,7 @@ export async function onRequestPost({ request, env }) {
 
 
 export async function onRequestPut({ request, env }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   const user = await getSessionUser(env, request);
   if (!user) return error("Please sign in before editing a job.", 401);
 
@@ -197,7 +205,7 @@ export async function onRequestPut({ request, env }) {
 }
 
 export async function onRequestDelete({ request, env }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   const user = await getSessionUser(env, request);
   if (!user) return error("Please sign in before deleting a job.", 401);
 
