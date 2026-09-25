@@ -58,3 +58,26 @@ export async function onRequestPost({ request, env }) {
     return error(err && err.message ? err.message : "Unable to update your profile.", 500);
   }
 }
+
+
+export async function onRequestDelete({ request, env }) {
+  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  const row = await getUser(env, request);
+  if (!row) return error("Please sign in first.", 401);
+
+  try {
+    await env.DB.prepare("DELETE FROM applications WHERE user_id = ?").bind(row.id).run();
+    await env.DB.prepare("DELETE FROM user_skills WHERE user_id = ?").bind(row.id).run();
+    await env.DB.prepare("DELETE FROM email_verification_tokens WHERE user_id = ?").bind(row.id).run();
+    await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(row.id).run();
+    await env.DB.prepare("DELETE FROM companies WHERE owner_user_id = ?").bind(row.id).run();
+    await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(row.id).run();
+
+    return json({ ok: true, message: "Profile deleted." }, 200, {
+      "Set-Cookie": "cinderburn_session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax",
+      "Cache-Control": "no-store"
+    });
+  } catch (err) {
+    return error(err && err.message ? err.message : "Unable to delete the profile.", 500);
+  }
+}
