@@ -4,6 +4,14 @@ function error(message, status) {
   return json({ ok: false, error: message }, status || 400);
 }
 
+async function ensureThumbnailColumn(env) {
+  const info = await env.DB.prepare("PRAGMA table_info(jobs)").all();
+  const exists = (info.results || []).some(row => row.name === "thumbnail_url");
+  if (!exists) {
+    await env.DB.prepare("ALTER TABLE jobs ADD COLUMN thumbnail_url TEXT").run();
+  }
+}
+
 async function getSessionUser(env, request) {
   const rawSession = getCookie(request, "cinderburn_session");
   if (!rawSession) return null;
@@ -16,6 +24,7 @@ async function getSessionUser(env, request) {
 export async function onRequestGet({ env }) {
   if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
   try {
+    await ensureThumbnailColumn(env);
     const result = await env.DB.prepare(
       "SELECT j.id, j.title, c.name AS company, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
     ).all();
@@ -54,6 +63,7 @@ export async function onRequestPost({ request, env }) {
   if (!user) return error("Please sign in before posting a job.", 401);
 
   try {
+    await ensureThumbnailColumn(env);
     const body = await request.json();
     const title = String(body.title || "").trim();
     const company = String(body.company || "").trim();
