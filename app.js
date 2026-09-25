@@ -90,7 +90,7 @@ function setModal(title, text, formHtml) {
 function signupFormHtml() {
   return '<div class="profile-picker">' +
     '<div class="avatar-preview" id="avatarPreview">+</div>' +
-    '<div><label class="file-label">Profile picture<input id="profilePicture" name="profile_picture" type="file" accept="image/*"></label><div class="field-help">Optional • PNG/JPG/WebP • max 5 MB</div></div>' +
+    '<div><label class="file-label">Profile picture<input id="profilePicture" name="profile_picture" type="file" accept="image/*"></label><div class="field-help">Optional • PNG/JPG/WebP • max 5 MB • kept on this device for now</div></div>' +
     '</div>' +
     '<div class="form-grid-two">' +
     '<input required name="name" type="text" placeholder="Full legal name">' +
@@ -181,6 +181,14 @@ async function submitSignup(form) {
     if (!response.ok) {
       setFormStatus("formStatus", body.error || "Unable to create your account.", true);
       return;
+    }
+    const picture = $("profilePicture")?.files?.[0];
+    if (picture) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try { localStorage.setItem("cinderburn_profile_picture", String(e.target.result || "")); } catch {}
+      };
+      reader.readAsDataURL(picture);
     }
     showInfo("Check your email", body.message + " The message will come from cinderburn@cinderburn.dewify.shop.");
   } catch {
