@@ -11,6 +11,7 @@ const resultCount = $("resultCount");
 const backdrop = $("modalBackdrop");
 let modalMode = null;
 let currentUser = null;
+let editingJobId = null;
 let jobsLoading = true;
 let jobsLoaded = false;
 
@@ -53,6 +54,76 @@ function getVisibleItems() {
       && (!f.exp || !item.exp || item.exp === f.exp)
       && (!f.work.length || f.work.includes(item.type));
   });
+}
+
+
+function updateWorkspaceVisibility() {
+  const section = $("accountWorkspace");
+  if (!section) return;
+  section.hidden = !currentUser;
+  if (currentUser) renderManageWorkspace();
+}
+
+function renderManageWorkspace() {
+  const section = $("accountWorkspace");
+  if (!section || !currentUser) return;
+  const list = $("myJobsList");
+  const profile = $("myProfileCard");
+  if (!list || !profile) return;
+
+  const mine = data.jobs.filter(job => job.can_edit);
+  list.innerHTML = mine.length
+    ? mine.map(job => '<article class="manage-job">' +
+        '<div class="manage-job-thumb">' + (job.thumbnail_url ? '<img src="' + escapeHtml(job.thumbnail_url) + '" alt="">' : '<span>CB</span>') + '</div>' +
+        '<div class="manage-job-main"><strong>' + escapeHtml(job.title) + '</strong><span>' + escapeHtml(job.company) + ' · ' + escapeHtml(job.location || "Location not listed") + '</span><small>' + escapeHtml(job.type || "") + ' · ' + escapeHtml(job.pay || "Salary not listed") + '</small></div>' +
+        '<div class="manage-job-actions"><button class="btn btn-secondary" data-manage-edit-job="' + escapeHtml(job.id) + '" type="button">Edit</button><button class="btn btn-danger" data-manage-delete-job="' + escapeHtml(job.id) + '" type="button">Delete</button></div>' +
+      '</article>').join("")
+    : '<div class="manage-empty">You have not posted any jobs yet.</div>';
+
+  profile.innerHTML = '<div class="manage-profile-top">' + avatarMarkup(currentUser, true) +
+    '<div><strong>' + escapeHtml(currentUser.displayName || currentUser.name) + '</strong><span>' + escapeHtml(currentUser.email) + '</span></div></div>' +
+    '<div class="manage-profile-fields"><div><span>City</span><strong>' + escapeHtml(currentUser.city || "Not added") + '</strong></div><div><span>Skills</span><strong>' + escapeHtml(currentUser.skills || "Not added") + '</strong></div><div><span>Bio</span><strong>' + escapeHtml(currentUser.bio || "Not added") + '</strong></div></div>';
+}
+
+async function deleteManagedJob(jobId, button) {
+  if (!confirm("Delete this job? This cannot be undone.")) return;
+  button.disabled = true;
+  button.textContent = "Deleting";
+  try {
+    const response = await fetch("/api/jobs?id=" + encodeURIComponent(jobId), { method: "DELETE", credentials: "same-origin", cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Unable to delete the job.");
+    data.jobs = data.jobs.filter(job => job.id !== jobId);
+    render();
+    renderManageWorkspace();
+  } catch (err) {
+    button.disabled = false;
+    button.textContent = "Delete";
+    alert(err.message || "Unable to delete the job.");
+  }
+}
+
+async function deleteOwnProfile() {
+  if (!confirm("Delete your CinderBurn profile? Your account, jobs and applications will be permanently removed.")) return;
+  const response = await fetch("/api/profile", { method: "DELETE", credentials: "same-origin", cache: "no-store" });
+  const body = await response.json();
+  if (!response.ok) {
+    alert(body.error || "Unable to delete the profile.");
+    return;
+  }
+  currentUser = null;
+  editingJobId = null;
+  data.jobs = [];
+  data.talent = [];
+  data.companies = [];
+  try {
+    localStorage.removeItem("cinderburn_user");
+    localStorage.removeItem("cinderburn_profile_picture");
+  } catch {}
+  renderAuthActions();
+  updateWorkspaceVisibility();
+  render();
+  alert("Your CinderBurn profile has been deleted.");
 }
 
 function updateLiveStats() {
@@ -194,7 +265,7 @@ function imageEditorHtml(prefix, label, aspectText) {
   '</div>';
 }
 
-function initImageEditor(prefix, aspectRatio, outputWidth) {
+function initImageEditor(prefix, aspectRatio, outputWidth, existingSrc) {
   const drop = $(prefix + "Drop");
   const input = $(prefix + "Input");
   const editor = $(prefix + "Editor");
@@ -262,6 +333,21 @@ function initImageEditor(prefix, aspectRatio, outputWidth) {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
   });
   input.addEventListener("change", () => loadFile(input.files?.[0]));
+  if (existingSrc) {
+    const img = new Image();
+    img.onload = () => {
+      state.image = img;
+      state.zoom = 1;
+      state.x = 0;
+      state.y = 0;
+      zoom.value = "1";
+      xRange.value = "0";
+      yRange.value = "0";
+      editor.hidden = false;
+      draw();
+    };
+    img.src = existingSrc;
+  }
 
   ["dragenter", "dragover"].forEach(type => drop.addEventListener(type, e => {
     e.preventDefault();
@@ -316,6 +402,22 @@ function loginFormHtml() {
     '<input required id="loginPassword" type="password" placeholder="Password">' +
     '<label class="legal-check"><input id="rememberDevice" type="checkbox"> Remember this device</label>' +
     '<button class="btn btn-primary" type="submit">Sign in</button>' +
+    '<div class="form-status" id="formStatus" aria-live="polite"></div>';
+}
+
+function editJobFormHtml(item) {
+  return imageEditorHtml("editJobImage", "Job thumbnail", "16:9 crop") +
+    '<input required id="editJobTitle" type="text" maxlength="120" value="' + escapeHtml(item.title || "") + '" placeholder="Job title">' +
+    '<input required id="editCompanyName" type="text" maxlength="100" value="' + escapeHtml(item.company || "") + '" placeholder="Company name">' +
+    '<input id="editJobLocation" type="text" maxlength="100" value="' + escapeHtml(item.location || "") + '" placeholder="Location">' +
+    '<select required id="editJobWorkType"><option value="">Work type</option><option' + (item.type === "Remote" ? " selected" : "") + '>Remote</option><option' + (item.type === "Hybrid" ? " selected" : "") + '>Hybrid</option><option' + (item.type === "On-site" ? " selected" : "") + '>On-site</option></select>' +
+    '<select required id="editJobCategory"><option value="">Category</option><option' + (item.category === "Technology" ? " selected" : "") + '>Technology</option><option' + (item.category === "Design" ? " selected" : "") + '>Design</option><option' + (item.category === "Marketing" ? " selected" : "") + '>Marketing</option><option' + (item.category === "Sales" ? " selected" : "") + '>Sales</option><option' + (item.category === "Content" ? " selected" : "") + '>Content</option></select>' +
+    '<div class="form-grid-two"><input id="editSalaryMin" type="number" min="0" value="' + escapeHtml(item.salary_min ?? "") + '" placeholder="Minimum salary (₹)"><input id="editSalaryMax" type="number" min="0" value="' + escapeHtml(item.salary_max ?? "") + '" placeholder="Maximum salary (₹)"></div>' +
+    '<textarea required id="editJobDescription" maxlength="4000" rows="6" placeholder="Job description">' + escapeHtml(item.description || "") + '</textarea>' +
+    '<div class="form-grid-two"><input required id="editJobContactPhone" type="tel" maxlength="40" value="' + escapeHtml(item.contact_phone || "") + '" placeholder="Contact phone number"><input required id="editJobContactEmail" type="email" maxlength="160" value="' + escapeHtml(item.contact_email || "") + '" placeholder="Contact email address"></div>' +
+    '<div class="field-help">Drop a new image to replace the existing thumbnail. Leave it untouched to keep the current image.</div>' +
+    '<button class="btn btn-primary" type="submit">Save job</button>' +
+    '<button class="btn btn-secondary" type="button" id="cancelEditJob">Cancel</button>' +
     '<div class="form-status" id="formStatus" aria-live="polite"></div>';
 }
 
@@ -442,6 +544,14 @@ function showEditProfile() {
   initImageEditor("editProfileImage", 1, 512);
 }
 
+function showEditJob(item) {
+  editingJobId = item.id;
+  modalMode = "edit-job";
+  setModal("Edit your job", "Only you can edit this job listing.", editJobFormHtml(item));
+  initImageEditor("editJobImage", 16 / 9, 960, item.thumbnail_url || "");
+  $("cancelEditJob").addEventListener("click", closeModal);
+}
+
 function showPostJob() {
   modalMode = "post-job";
   setModal("Post a job", "Publish a role directly from your CinderBurn account.", postJobFormHtml());
@@ -488,6 +598,8 @@ async function submitLogin(form) {
     currentUser = body.user;
     try { localStorage.setItem("cinderburn_user", JSON.stringify(body.user)); } catch {}
     renderAuthActions();
+    updateWorkspaceVisibility();
+    await loadJobs();
     closeModal();
     showProfile();
   } catch {
@@ -527,7 +639,47 @@ async function submitPostJob() {
     mode = "jobs";
     document.querySelectorAll(".seg").forEach(b => b.classList.toggle("active", b.dataset.mode === "jobs"));
     closeModal();
+    renderManageWorkspace();
     document.getElementById("jobs").scrollIntoView({behavior:"auto"});
+  } catch {
+    setFormStatus("formStatus", "Network error. Please try again.", true);
+  }
+}
+
+
+async function submitEditJob() {
+  const item = data.jobs.find(job => job.id === editingJobId);
+  const existingImage = item?.thumbnail_url || "";
+  const payload = {
+    title: $("editJobTitle").value.trim(),
+    company: $("editCompanyName").value.trim(),
+    location: $("editJobLocation").value.trim(),
+    workType: $("editJobWorkType").value,
+    category: $("editJobCategory").value,
+    salaryMin: $("editSalaryMin").value ? Number($("editSalaryMin").value) : null,
+    salaryMax: $("editSalaryMax").value ? Number($("editSalaryMax").value) : null,
+    description: $("editJobDescription").value.trim(),
+    contactPhone: $("editJobContactPhone").value.trim(),
+    contactEmail: $("editJobContactEmail").value.trim(),
+    thumbnailUrl: imageEditors.get("editJobImage")?.getDataUrl() || existingImage
+  };
+  setFormStatus("formStatus", "Saving job");
+  try {
+    const response = await fetch("/api/jobs?id=" + encodeURIComponent(editingJobId), {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setFormStatus("formStatus", body.error || "Unable to edit the job.", true);
+      return;
+    }
+    editingJobId = null;
+    closeModal();
+    await loadJobs();
+    renderManageWorkspace();
   } catch {
     setFormStatus("formStatus", "Network error. Please try again.", true);
   }
@@ -557,6 +709,7 @@ async function submitEditProfile() {
     currentUser = body.user;
     try { localStorage.setItem("cinderburn_user", JSON.stringify(body.user)); } catch {}
     renderAuthActions();
+    updateWorkspaceVisibility();
     showProfile();
   } catch {
     setFormStatus("formStatus", "Network error. Please try again.", true);
@@ -577,6 +730,8 @@ async function loadSession() {
     currentUser = null;
   }
   renderAuthActions();
+  updateWorkspaceVisibility();
+  if (currentUser) await loadJobs();
 }
 
 function signOut() {
@@ -588,6 +743,7 @@ function signOut() {
   } catch {}
   closeModal();
   renderAuthActions();
+  updateWorkspaceVisibility();
 }
 
 document.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
@@ -652,10 +808,40 @@ $("signupForm").addEventListener("submit", e => {
   if (modalMode === "signup") submitSignup(e.target);
   else if (modalMode === "signin") submitLogin(e.target);
   else if (modalMode === "post-job") submitPostJob(e.target);
+  else if (modalMode === "edit-job") submitEditJob();
   else if (modalMode === "edit-profile") submitEditProfile();
 });
 
 document.addEventListener("click", async e => {
+  const manageEditButton = e.target.closest("[data-manage-edit-job]");
+  if (manageEditButton) {
+    const job = data.jobs.find(item => item.id === manageEditButton.dataset.manageEditJob);
+    if (job && job.can_edit) showEditJob(job);
+    return;
+  }
+  const manageDeleteButton = e.target.closest("[data-manage-delete-job]");
+  if (manageDeleteButton) {
+    const job = data.jobs.find(item => item.id === manageDeleteButton.dataset.manageDeleteJob);
+    if (job && job.can_delete) await deleteManagedJob(job.id, manageDeleteButton);
+    return;
+  }
+  const managePost = e.target.closest("#managePostJobButton");
+  if (managePost) {
+    if (!currentUser) return;
+    showPostJob();
+    return;
+  }
+  const manageEditProfile = e.target.closest("#manageEditProfileButton");
+  if (manageEditProfile) {
+    if (currentUser) showEditProfile();
+    return;
+  }
+  const manageDeleteProfile = e.target.closest("#manageDeleteProfileButton");
+  if (manageDeleteProfile) {
+    if (currentUser) await deleteOwnProfile();
+    return;
+  }
+
   const deleteButton = e.target.closest("[data-job-delete]");
   if (deleteButton) {
     const jobId = deleteButton.dataset.jobDelete;
