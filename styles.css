@@ -16,3 +16,6 @@
 .profile-grid>div{min-width:0}
 .profile-grid strong{overflow-wrap:anywhere}
 .split-note{line-height:1.5}
+
+.edit-profile-top{padding:8px 11px;font-size:12px}
+@media(max-width:620px){.edit-profile-top{display:none}}
