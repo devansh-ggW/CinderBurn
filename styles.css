@@ -19,3 +19,120 @@
 
 .edit-profile-top{padding:8px 11px;font-size:12px}
 @media(max-width:620px){.edit-profile-top{display:none}}
+
+/* Mobile performance and layout pass */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+img{max-width:100%}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+@media (max-width: 720px){
+  body{background:var(--bg);font-size:15px}
+  .section-pad{padding-left:14px;padding-right:14px}
+  .site-header{height:62px;padding:0 12px;gap:8px}
+  .brand{gap:8px;min-width:0}
+  .brand-mark{width:30px;height:30px;border-radius:8px;box-shadow:none}
+  .brand-name{font-size:16px}
+  .nav-actions{gap:6px;min-width:0}
+  .nav-actions .btn{min-height:38px}
+  .nav-actions .btn-ghost{padding:7px 9px;font-size:11px}
+  .nav-actions .btn-primary{padding:7px 10px;font-size:11px}
+  .account-chip{min-height:38px;padding:4px 8px 4px 5px}
+  .account-name{max-width:90px}
+  .edit-profile-top{display:inline-flex!important;min-height:38px;padding:7px 9px!important;font-size:11px!important}
+  .hero{padding-top:28px;padding-bottom:40px;gap:22px}
+  .hero-copy{min-width:0}
+  .eyebrow{font-size:9px;letter-spacing:.13em}
+  h1{font-size:clamp(42px,13vw,62px);line-height:.94;letter-spacing:-.055em;margin:14px 0}
+  .hero-sub{font-size:15px;line-height:1.55}
+  .hero-ctas{gap:8px;margin:22px 0 14px}
+  .hero-ctas .btn{min-height:48px}
+  .trust-row{font-size:10px;gap:7px;flex-wrap:wrap}
+  .hero-panel{width:100%;gap:10px}
+  .hero-panel-glow{display:none}
+  .search-card,.match-stack{border-radius:15px;box-shadow:none}
+  .search-card{padding:14px}
+  .big-search{padding:4px;gap:6px}
+  .big-search input{font-size:14px;padding:10px 8px}
+  .search-go{padding:10px 11px;white-space:nowrap}
+  .search-chips{gap:6px;margin-top:9px}
+  .search-chips button{padding:8px 9px;font-size:11px}
+  .match-stack{padding:11px}
+  .match-card{grid-template-columns:auto minmax(0,1fr) auto;gap:9px;padding:10px;margin-top:8px}
+  .match-info span{font-size:10px}
+  .stats{gap:8px;padding-top:8px;padding-bottom:42px}
+  .stats>div{padding:12px 10px}
+  .stats strong{font-size:23px}
+  .stats span{font-size:10px}
+  .market{padding-top:10px;padding-bottom:60px}
+  .section-head{margin-bottom:14px;gap:12px}
+  .section-head h2{font-size:36px;margin-top:8px}
+  .segmented{width:100%;padding:3px}
+  .seg{min-height:40px;padding:8px 10px}
+  .market-search{display:grid;grid-template-columns:1fr;gap:7px;padding:8px;margin-bottom:14px}
+  .market-search .search-icon{display:none}
+  .market-search input,.market-search select,.market-search .btn{width:100%;min-height:44px}
+  .market-search select{display:block}
+  .content-grid{display:block}
+  .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;margin-bottom:12px}
+  .filter-title{grid-column:1/-1;margin-bottom:2px}
+  .filters>label{margin:0;padding-top:6px}
+  .filters .check-list{grid-column:1/-1;grid-template-columns:repeat(3,1fr);gap:6px}
+  .check-list label{justify-content:flex-start;min-height:36px}
+  .filters select{width:100%;min-height:40px}
+  .result-toolbar{font-size:11px}
+  .results{gap:8px}
+  .result-card{border-radius:13px;padding:11px;gap:9px}
+  .result-title{font-size:17px}
+  .result-top{font-size:10px;gap:6px;flex-wrap:wrap}
+  .result-meta{font-size:11px}
+  .tag-row{margin-top:9px}
+  .tag{font-size:10px;padding:4px 6px}
+  .result-side{gap:8px}
+  .apply-btn{min-height:42px}
+  .job-result-card{grid-template-columns:64px minmax(0,1fr);align-items:start}
+  .job-thumb{width:64px;height:64px;min-height:64px;border-radius:10px}
+  .job-thumb img{min-height:64px}
+  .split-section{gap:10px;padding-bottom:58px}
+  .split-card{min-height:250px;padding:22px;border-radius:17px}
+  .split-card h3{font-size:39px}
+  .how{padding-bottom:58px}
+  .steps{grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+  .step{padding:13px 0}
+  .step h4{font-size:14px}
+  .step p{font-size:11px}
+  .cta{padding-bottom:56px}
+  .cta-inner{padding:22px;border-radius:17px;gap:18px}
+  .cta-inner h2{font-size:38px}
+  .footer{padding-top:22px;padding-bottom:28px;font-size:10px}
+  .footer-links{gap:8px}
+  .modal-backdrop{padding:0;place-items:stretch}
+  .modal{width:100%;height:100%;max-height:100dvh;border:0;border-radius:0;padding:18px 14px 22px;box-shadow:none}
+  .modal h3{font-size:26px;margin:8px 0}
+  .modal p{font-size:12px}
+  .modal-close{right:10px;top:8px;min-width:40px;min-height:40px}
+  .modal form{gap:9px;margin-top:14px}
+  .modal input:not([type="checkbox"]),.modal select,.modal textarea{min-height:44px}
+  .modal .btn{min-height:44px}
+  .profile-picker{align-items:flex-start}
+  .profile-grid{grid-template-columns:1fr 1fr}
+  .profile-grid>div{padding:9px}
+  .job-thumbnail-preview{height:120px}
+}
+@media (max-width: 420px){
+  .site-header{padding:0 8px}
+  .brand-name{font-size:15px}
+  .brand-mark{width:28px;height:28px}
+  .nav-actions .btn-ghost{padding:7px 7px}
+  .nav-actions .btn-primary{padding:7px 8px}
+  .account-name{display:none}
+  .edit-profile-top{padding:7px 8px!important}
+  .hero{padding-top:22px}
+  .hero-sub{font-size:14px}
+  .stats strong{font-size:21px}
+  .filters{grid-template-columns:1fr}
+  .filters .check-list{grid-template-columns:1fr 1fr 1fr}
+  .steps{grid-template-columns:1fr}
+  .profile-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
+}
