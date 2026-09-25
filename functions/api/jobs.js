@@ -52,6 +52,8 @@ export async function onRequestGet({ env, request }) {
         category: row.category,
         exp: "",
         pay: row.salary_min != null || row.salary_max != null ? formatSalary(row.salary_min, row.salary_max) : "Salary not listed",
+        salary_min: row.salary_min ?? null,
+        salary_max: row.salary_max ?? null,
         tags: [],
         description: row.description || "",
         thumbnail_url: row.thumbnail_url || null,
