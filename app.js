@@ -26,15 +26,21 @@ const data = {
 };
 
 let mode = 'jobs';
-const results = document.getElementById('results');
-const resultCount = document.getElementById('resultCount');
+const $ = id => document.getElementById(id);
+const results = $('results');
+const resultCount = $('resultCount');
+const backdrop = $('modalBackdrop');
+
+// Defensive modal initialization: never block the homepage on first load.
+backdrop.hidden = true;
+backdrop.style.display = 'none';
 
 function getFilters(){
   return {
-    q: document.getElementById('marketSearch').value.trim().toLowerCase(),
-    location: document.getElementById('locationFilter').value,
-    category: document.getElementById('categoryFilter').value,
-    exp: document.getElementById('experienceFilter').value,
+    q: $('marketSearch').value.trim().toLowerCase(),
+    location: $('locationFilter').value,
+    category: $('categoryFilter').value,
+    exp: $('experienceFilter').value,
     work: [...document.querySelectorAll('[data-filter="work"]:checked')].map(x => x.value)
   };
 }
@@ -46,17 +52,9 @@ function render(){
     return (!f.q || hay.includes(f.q)) && (!f.location || item.location === f.location) && (!f.category || item.category === f.category) && (!f.exp || item.exp === f.exp) && (!f.work.length || f.work.includes(item.type));
   });
   resultCount.textContent = `Showing ${filtered.length} result${filtered.length===1?'':'s'}`;
-  results.innerHTML = filtered.map((item, idx) => {
+  results.innerHTML = filtered.map(item => {
     const action = mode === 'jobs' ? 'View job' : mode === 'talent' ? 'View profile' : 'View company';
-    return `<article class="result-card">
-      <div class="result-main">
-        <div class="result-top"><span>${item.company}</span><span>•</span><span>${item.location}</span><span>•</span><span>${item.type}</span></div>
-        <div class="result-title">${item.title}</div>
-        <div class="result-meta">${mode === 'companies' ? 'Company profile' : item.category}</div>
-        <div class="tag-row">${item.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-      </div>
-      <div class="result-side"><div class="result-pay">${item.pay}</div><button class="apply-btn" data-demo-action="${action}">${action}</button></div>
-    </article>`;
+    return `<article class="result-card"><div class="result-main"><div class="result-top"><span>${item.company}</span><span>•</span><span>${item.location}</span><span>•</span><span>${item.type}</span></div><div class="result-title">${item.title}</div><div class="result-meta">${mode === 'companies' ? 'Company profile' : item.category}</div><div class="tag-row">${item.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div><div class="result-side"><div class="result-pay">${item.pay}</div><button class="apply-btn" data-demo-action="${action}">${action}</button></div></article>`;
   }).join('') || `<div class="result-card"><div><div class="result-title">No matches yet.</div><div class="result-meta">Try a broader keyword or clear a filter.</div></div></div>`;
 }
 
@@ -67,27 +65,24 @@ document.querySelectorAll('.seg').forEach(btn => btn.addEventListener('click', (
 }));
 
 document.querySelectorAll('.search-chips button').forEach(btn => btn.addEventListener('click', () => {
-  document.getElementById('heroSearch').value = btn.dataset.query;
-  document.getElementById('marketSearch').value = btn.dataset.query;
-  document.getElementById('jobs').scrollIntoView({behavior:'smooth'});
+  $('heroSearch').value = btn.dataset.query;
+  $('marketSearch').value = btn.dataset.query;
+  $('jobs').scrollIntoView({behavior:'smooth'});
   render();
 }));
 
-document.getElementById('heroSearchBtn').addEventListener('click', () => {
-  document.getElementById('marketSearch').value = document.getElementById('heroSearch').value;
-  document.getElementById('jobs').scrollIntoView({behavior:'smooth'});
+$('heroSearchBtn').addEventListener('click', () => {
+  $('marketSearch').value = $('heroSearch').value;
+  $('jobs').scrollIntoView({behavior:'smooth'});
   render();
 });
-
-document.getElementById('marketSearchBtn').addEventListener('click', render);
-document.getElementById('marketSearch').addEventListener('keydown', e => { if(e.key==='Enter') render(); });
-['locationFilter','categoryFilter','experienceFilter'].forEach(id => document.getElementById(id).addEventListener('change', render));
+$('heroSearch').addEventListener('keydown', e => { if(e.key === 'Enter') $('heroSearchBtn').click(); });
+$('marketSearchBtn').addEventListener('click', render);
+$('marketSearch').addEventListener('keydown', e => { if(e.key === 'Enter') render(); });
+['locationFilter','categoryFilter','experienceFilter'].forEach(id => $(id).addEventListener('change', render));
 document.querySelectorAll('[data-filter="work"]').forEach(el => el.addEventListener('change', render));
-document.getElementById('clearFilters').addEventListener('click', () => {
-  document.getElementById('marketSearch').value='';
-  document.getElementById('locationFilter').value='';
-  document.getElementById('categoryFilter').value='';
-  document.getElementById('experienceFilter').value='';
+$('clearFilters').addEventListener('click', () => {
+  $('marketSearch').value=''; $('locationFilter').value=''; $('categoryFilter').value=''; $('experienceFilter').value='';
   document.querySelectorAll('[data-filter="work"]').forEach(el => el.checked=false);
   render();
 });
@@ -96,24 +91,36 @@ document.querySelectorAll('[data-tab-target]').forEach(btn => btn.addEventListen
   const target = btn.dataset.tabTarget;
   mode = target === 'talent' ? 'companies' : 'jobs';
   document.querySelectorAll('.seg').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  document.getElementById(target).scrollIntoView({behavior:'smooth'});
+  $(target).scrollIntoView({behavior:'smooth'});
   render();
 }));
 
-const backdrop = document.getElementById('modalBackdrop');
-function openModal(kind){
-  const title = document.getElementById('modalTitle');
-  const text = document.getElementById('modalText');
-  if(kind==='signin'){ title.textContent='Welcome back'; text.textContent='Sign in to manage jobs, applications and conversations.'; }
-  else { title.textContent='Join CinderBurn'; text.textContent='Create your account and choose whether you are here to hire, get hired, or both.'; }
-  backdrop.hidden=false;
+function closeModal(){
+  backdrop.hidden = true;
+  backdrop.style.display = 'none';
 }
 
-document.querySelectorAll('[data-modal]').forEach(btn=>btn.addEventListener('click',()=>openModal(btn.dataset.modal)));
-document.getElementById('modalClose').addEventListener('click',()=>backdrop.hidden=true);
-backdrop.addEventListener('click',e=>{if(e.target===backdrop)backdrop.hidden=true});
-document.getElementById('signupForm').addEventListener('submit',e=>{e.preventDefault();document.getElementById('modalText').textContent='Demo submitted. Next step: wire this form to the Cloudflare Worker and D1.';e.target.reset();});
+function openModal(kind){
+  $('modalTitle').textContent = kind === 'signin' ? 'Welcome back' : 'Join CinderBurn';
+  $('modalText').textContent = kind === 'signin'
+    ? 'Sign in to manage jobs, applications and conversations.'
+    : 'Create your account and choose whether you are here to hire, get hired, or both.';
+  backdrop.hidden = false;
+  backdrop.style.display = 'grid';
+}
 
-document.addEventListener('click', e=>{ if(e.target.matches('[data-demo-action]')) alert(`${e.target.dataset.demoAction} demo — connect this button to the Cloudflare API.`); });
+document.querySelectorAll('[data-modal]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.modal)));
+$('modalClose').addEventListener('click', closeModal);
+backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+$('signupForm').addEventListener('submit', e => {
+  e.preventDefault();
+  $('modalText').textContent = 'Demo submitted. Your account flow is ready to connect to the Cloudflare Worker and D1.';
+  e.target.reset();
+});
+
+document.addEventListener('click', e => {
+  if(e.target.matches('[data-demo-action]')) alert(`${e.target.dataset.demoAction} demo — connect this button to the Cloudflare API.`);
+});
 
 render();
