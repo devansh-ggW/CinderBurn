@@ -1,22 +1,7 @@
 const data = {
   jobs: [],
-  talent: [
-    {title:"Aarav Kulkarni",company:"Frontend Developer",location:"Pune",type:"Remote",category:"Technology",exp:"2-5",pay:"Available",tags:["React","JavaScript","Next.js"],description:"Frontend developer focused on fast, accessible web products."},
-    {title:"Meera Shah",company:"Product Designer",location:"Mumbai",type:"Hybrid",category:"Design",exp:"2-5",pay:"Available",tags:["Figma","UX","Design Systems"],description:"Product designer specialising in clear UX and scalable design systems."},
-    {title:"Rohan Verma",company:"React Engineer",location:"Bengaluru",type:"Remote",category:"Technology",exp:"5+",pay:"Available",tags:["React","TypeScript","Node"],description:"Senior React engineer building production web applications."},
-    {title:"Ishita Rao",company:"Growth Marketer",location:"Delhi",type:"Remote",category:"Marketing",exp:"0-2",pay:"Available",tags:["SEO","Content","Ads"],description:"Growth marketer focused on content, SEO and acquisition experiments."},
-    {title:"Kabir Jain",company:"Video Editor",location:"Pune",type:"Remote",category:"Content",exp:"2-5",pay:"Available",tags:["Premiere","CapCut","Reels"],description:"Video editor specialising in short-form social content."},
-    {title:"Zoya Khan",company:"B2B Sales",location:"Hyderabad",type:"Hybrid",category:"Sales",exp:"5+",pay:"Available",tags:["SaaS","Outbound","CRM"],description:"B2B sales specialist experienced in outbound and SaaS pipelines."}
-  ],
-  companies: [
-    {title:"Nova Labs",company:"Technology",location:"Bengaluru",type:"Remote",category:"Technology",exp:"",pay:"18 open roles",tags:["Software","SaaS","Hiring"],description:"Software company hiring across engineering and product."},
-    {title:"Orbit Commerce",company:"Retail Technology",location:"Mumbai",type:"Hybrid",category:"Technology",exp:"",pay:"11 open roles",tags:["Commerce","Design","Product"],description:"Commerce technology company building tools for modern retailers."},
-    {title:"VibeWorks",company:"Consumer Brand",location:"Delhi",type:"On-site",category:"Marketing",exp:"",pay:"7 open roles",tags:["Marketing","Content","Growth"],description:"Consumer brand with a focus on growth and digital content."},
-    {title:"Northstar Media",company:"Media & Content",location:"Pune",type:"Remote",category:"Content",exp:"",pay:"5 open roles",tags:["Video","Creative","Social"],description:"Media studio producing digital-first content."},
-    {title:"Vertex Systems",company:"B2B SaaS",location:"Hyderabad",type:"Hybrid",category:"Sales",exp:"",pay:"9 open roles",tags:["SaaS","Sales","Support"],description:"B2B software company serving growing businesses."},
-    {title:"ForgePay",company:"Fintech",location:"Bengaluru",type:"Remote",category:"Technology",exp:"",pay:"13 open roles",tags:["Fintech","Engineering","Product"],description:"Fintech company building modern payment products."}
-  ]
-
+  talent: [],
+  companies: []
 };
 
 let mode = "jobs";
@@ -87,8 +72,8 @@ function render() {
   resultCount.textContent = "Showing " + filtered.length + " result" + (filtered.length === 1 ? "" : "s");
 
   if (!filtered.length) {
-    const emptyTitle = mode === "jobs" ? "No jobs posted yet." : "No matches yet.";
-    const emptyText = mode === "jobs" ? "Published jobs will appear here." : "Try a broader keyword or clear a filter.";
+    const emptyTitle = mode === "jobs" ? "No jobs posted yet." : mode === "talent" ? "No public profiles yet." : "No companies listed yet.";
+    const emptyText = mode === "jobs" ? "Published jobs will appear here." : mode === "talent" ? "Verified members who make their profile discoverable will appear here." : "Companies created through CinderBurn will appear here.";
     results.innerHTML = '<div class="result-card"><div><div class="result-title">' + emptyTitle + '</div><div class="result-meta">' + emptyText + '</div></div></div>';
     return;
   }
@@ -133,6 +118,28 @@ async function loadJobs() {
     jobsLoading = false;
     render();
   }
+}
+
+async function loadPeople() {
+  try {
+    const response = await fetch("/api/people", { credentials: "same-origin", cache: "no-store" });
+    const body = await response.json();
+    data.talent = response.ok && Array.isArray(body.people) ? body.people : [];
+  } catch {
+    data.talent = [];
+  }
+  render();
+}
+
+async function loadCompanies() {
+  try {
+    const response = await fetch("/api/companies", { credentials: "same-origin", cache: "no-store" });
+    const body = await response.json();
+    data.companies = response.ok && Array.isArray(body.companies) ? body.companies : [];
+  } catch {
+    data.companies = [];
+  }
+  render();
 }
 
 function closeModal() {
@@ -293,13 +300,31 @@ function profileFormHtml() {
       '<div><span>Country</span><strong>' + escapeHtml(currentUser.country || "IN") + '</strong></div>' +
       '<div><span>Status</span><strong>Verified account</strong></div>' +
     '</div>' +
+    '<button type="button" class="btn btn-primary" id="editProfileButton">Edit profile</button>' +
     '<button type="button" class="btn btn-secondary" id="signOutButton">Sign out</button>';
+}
+
+function editProfileFormHtml() {
+  return '<input required id="editDisplayName" type="text" maxlength="40" value="' + escapeHtml(currentUser.displayName || "") + '" placeholder="Display name">' +
+    '<input id="editCity" type="text" maxlength="80" value="' + escapeHtml(currentUser.city || "") + '" placeholder="City">' +
+    '<input id="editSkills" type="text" maxlength="500" value="' + escapeHtml(currentUser.skills || "") + '" placeholder="Skills">' +
+    '<textarea id="editBio" maxlength="1200" rows="5" placeholder="Short bio">' + escapeHtml(currentUser.bio || "") + '</textarea>' +
+    '<button type="submit" class="btn btn-primary">Save changes</button>' +
+    '<button type="button" class="btn btn-secondary" id="cancelEditProfile">Cancel</button>' +
+    '<div class="form-status" id="formStatus" aria-live="polite"></div>';
 }
 
 function showProfile() {
   modalMode = "profile";
   setModal("Your CinderBurn profile", "This is the account currently connected to this browser.", profileFormHtml());
+  $("editProfileButton").addEventListener("click", showEditProfile);
   $("signOutButton").addEventListener("click", signOut);
+}
+
+function showEditProfile() {
+  modalMode = "edit-profile";
+  setModal("Edit your profile", "Update the profile information that other CinderBurn users can see.", editProfileFormHtml());
+  $("cancelEditProfile").addEventListener("click", showProfile);
 }
 
 function showPostJob() {
@@ -398,6 +423,35 @@ async function submitPostJob() {
   }
 }
 
+async function submitEditProfile() {
+  const payload = {
+    displayName: $("editDisplayName").value.trim(),
+    city: $("editCity").value.trim(),
+    skills: $("editSkills").value.trim(),
+    bio: $("editBio").value.trim()
+  };
+  setFormStatus("formStatus", "Saving changes");
+  try {
+    const response = await fetch("/api/profile", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setFormStatus("formStatus", body.error || "Unable to save your profile.", true);
+      return;
+    }
+    currentUser = body.user;
+    try { localStorage.setItem("cinderburn_user", JSON.stringify(body.user)); } catch {}
+    renderAuthActions();
+    showProfile();
+  } catch {
+    setFormStatus("formStatus", "Network error. Please try again.", true);
+  }
+}
+
 function showInfo(title, text, actionText) {
   setModal(title, text, '<button type="button" class="btn btn-primary" id="modalDone">' + (actionText || "Continue") + '</button>');
   $("modalDone").addEventListener("click", closeModal);
@@ -487,6 +541,7 @@ $("signupForm").addEventListener("submit", e => {
   if (modalMode === "signup") submitSignup(e.target);
   else if (modalMode === "signin") submitLogin(e.target);
   else if (modalMode === "post-job") submitPostJob(e.target);
+  else if (modalMode === "edit-profile") submitEditProfile();
 });
 
 document.addEventListener("click", e => {
