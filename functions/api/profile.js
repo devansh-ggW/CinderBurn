@@ -28,7 +28,7 @@ function toUser(row) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   const row = await getUser(env, request);
   if (!row) return error("Please sign in first.", 401);
 
@@ -61,7 +61,7 @@ export async function onRequestPost({ request, env }) {
 
 
 export async function onRequestDelete({ request, env }) {
-  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  if (!env.DB) return error("DEWIFY database is not configured yet.", 503);
   const row = await getUser(env, request);
   if (!row) return error("Please sign in first.", 401);
 
