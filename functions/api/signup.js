@@ -11,13 +11,16 @@ async function sendVerificationEmail(env, to, name, token) {
   if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured.");
   const verifyUrl = "https://cinderburn.dewify.shop/api/verify?token=" + encodeURIComponent(token);
   const emailHtml =
-    '<!doctype html><html><body style="font-family:Arial,sans-serif;background:#080808;color:#111;margin:0;padding:32px">' +
-    '<div style="max-width:560px;margin:auto;background:#fff;border-radius:16px;padding:32px">' +
-    "<h1 style=\"margin-top:0\">Welcome to CinderBurn, " + name + ".</h1>" +
-    "<p>Confirm your email address to activate your account.</p>" +
-    '<p><a href="' + verifyUrl + '" style="display:inline-block;background:#ef4e24;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700">Verify email</a></p>' +
-    '<p style="color:#666;font-size:13px">This verification link expires in 24 hours.</p>' +
-    '<p style="color:#777;font-size:12px">If you did not create this account, you can ignore this email.</p>' +
+    '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;background:#f6f6f6;color:#171717;margin:0;padding:32px">' +
+    '<div style="max-width:560px;width:100%;margin:auto;background:#ffffff;border:1px solid #e5e5e5;border-radius:12px;padding:32px">' +
+    '<div style="font-size:24px;font-weight:700;margin-bottom:24px">CinderBurn</div>' +
+    "<h1 style=\"margin:0 0 14px;font-size:26px\">Verify your email address</h1>" +
+    "<p style=\"line-height:1.6\">Hi " + name + ",</p>" +
+    "<p style=\"line-height:1.6\">You created a CinderBurn account with this email address. Click the button below to verify it.</p>" +
+    '<p><a href="' + verifyUrl + '" style="display:inline-block;background:#ef4e24;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Verify email address</a></p>' +
+    '<p style="color:#666;line-height:1.6;font-size:13px">This link expires in 24 hours.</p>' +
+    '<p style="color:#666;line-height:1.6;font-size:13px">If you did not create a CinderBurn account, you can ignore this message.</p>' +
+    '<p style="color:#888;line-height:1.6;font-size:12px;margin-bottom:0">CinderBurn<br>cinderburn.dewify.shop</p>' +
     "</div></body></html>";
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -28,7 +31,7 @@ async function sendVerificationEmail(env, to, name, token) {
     body: JSON.stringify({
       from: "CinderBurn <cinderburn@cinderburn.dewify.shop>",
       to: [to],
-      subject: "Verify your CinderBurn email",
+      subject: "Verify your CinderBurn email address",
       html: emailHtml,
       text: "Welcome to CinderBurn, " + name + ". Verify your email: " + verifyUrl
     })
