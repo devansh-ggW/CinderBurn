@@ -225,6 +225,54 @@ function profileFormHtml() {
     '<button type="button" class="btn btn-secondary" id="signOutButton">Sign out</button>';
 }
 
+
+function postJobFormHtml() {
+  return '<input required id="jobTitle" type="text" maxlength="120" placeholder="Job title">' +
+    '<input required id="companyName" type="text" maxlength="100" placeholder="Company name">' +
+    '<input id="jobLocation" type="text" maxlength="100" placeholder="Location (e.g. Mumbai or Remote)">' +
+    '<select required id="jobWorkType"><option value="">Work type</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select>' +
+    '<select required id="jobCategory"><option value="">Category</option><option>Technology</option><option>Design</option><option>Marketing</option><option>Sales</option><option>Content</option></select>' +
+    '<div class="form-grid-two"><input id="salaryMin" type="number" min="0" placeholder="Minimum salary (₹)"><input id="salaryMax" type="number" min="0" placeholder="Maximum salary (₹)"></div>' +
+    '<textarea required id="jobDescription" maxlength="4000" rows="6" placeholder="Describe the role, responsibilities and what you are looking for."></textarea>' +
+    '<button class="btn btn-primary" type="submit">Publish job</button>' +
+    '<div class="form-status" id="formStatus" aria-live="polite"></div>';
+}
+
+function showPostJob() {
+  modalMode = "post-job";
+  setModal("Post a job", "Publish a role directly from your CinderBurn account.", postJobFormHtml());
+}
+
+async function submitPostJob(form) {
+  const payload = {
+    title: $("jobTitle").value.trim(),
+    company: $("companyName").value.trim(),
+    location: $("jobLocation").value.trim(),
+    workType: $("jobWorkType").value,
+    category: $("jobCategory").value,
+    salaryMin: $("salaryMin").value ? Number($("salaryMin").value) : null,
+    salaryMax: $("salaryMax").value ? Number($("salaryMax").value) : null,
+    description: $("jobDescription").value.trim()
+  };
+  setFormStatus("formStatus", "Publishing job…");
+  try {
+    const response = await fetch("/api/jobs", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setFormStatus("formStatus", body.error || "Unable to publish the job.", true);
+      return;
+    }
+    showInfo("Job published", body.message || "Your job is now live on CinderBurn.", "Done");
+  } catch {
+    setFormStatus("formStatus", "Network error. Please try again.", true);
+  }
+}
+
 function showProfile() {
   modalMode = "profile";
   setModal("Your CinderBurn profile", "This is the account currently connected to this browser.", profileFormHtml());
@@ -352,13 +400,16 @@ document.querySelectorAll("[data-tab-target]").forEach(btn => btn.addEventListen
   render();
 }));
 
-document.querySelectorAll("[data-modal]").forEach(btn => btn.addEventListener("click", () => {
-  if (btn.dataset.modal === "signup") showSignup();
-  else {
+bindAuthButtons();
+
+$("postJobButton").addEventListener("click", () => {
+  if (!currentUser) {
     modalMode = "signin";
-    setModal("Welcome back", "Sign in with your verified CinderBurn email.", loginFormHtml());
+    setModal("Sign in to post a job", "Create or sign in to your CinderBurn account before posting a role.", loginFormHtml());
+    return;
   }
-}));
+  showPostJob();
+});
 
 $("modalClose").addEventListener("click", closeModal);
 backdrop.addEventListener("click", e => { if (e.target === backdrop) closeModal(); });
@@ -368,6 +419,7 @@ $("signupForm").addEventListener("submit", e => {
   e.preventDefault();
   if (modalMode === "signup") submitSignup(e.target);
   else if (modalMode === "signin") submitLogin(e.target);
+  else if (modalMode === "post-job") submitPostJob(e.target);
 });
 
 document.addEventListener("click", e => {
