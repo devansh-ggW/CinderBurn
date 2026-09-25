@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS companies (
   industry TEXT,
   description TEXT,
   logo_url TEXT,
+  thumbnail_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
