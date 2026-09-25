@@ -112,14 +112,56 @@ function showMessage(title, text, buttonText='Close'){
   $('modalDone').addEventListener('click', closeModal);
 }
 
+function ageFromDob(dob){
+  const birth = new Date(`${dob}T00:00:00`);
+  if(Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const month = today.getMonth() - birth.getMonth();
+  if(month < 0 || (month === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function profileForm(kind){
+  if(kind === 'signin') return `<div class="form-section"><div class="form-label">Account</div><input required type="email" id="accountEmail" autocomplete="email" placeholder="Email address" /><input required type="password" id="accountPassword" autocomplete="current-password" placeholder="Password" /><label class="check-row"><input type="checkbox" id="rememberMe" /> Remember me on this device</label></div><button class="btn btn-primary" type="submit">Sign in</button><div class="form-footnote">By signing in, you agree to follow CinderBurn's rules and use the platform honestly.</div>`;
+  return `<div class="profile-photo-block"><div class="profile-preview" id="profilePreview">+</div><div><label class="upload-btn" for="profilePhoto">Add profile picture</label><input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" hidden /><div class="form-footnote">Use a photo you have the right to use. Max 2 MB in this demo.</div></div></div><div class="form-section"><div class="form-label">Identity</div><input required type="text" id="fullName" autocomplete="name" placeholder="Full name" /><input required type="text" id="displayName" placeholder="Display name" /><label class="field-label" for="dateOfBirth">Date of birth</label><input required type="date" id="dateOfBirth" max="${new Date().toISOString().slice(0,10)}" /><div class="age-note" id="ageNote">CinderBurn is currently 18+.</div></div><div class="form-section"><div class="form-label">Account</div><input required type="email" id="accountEmail" autocomplete="email" placeholder="Email address" /><input required type="password" id="accountPassword" autocomplete="new-password" minlength="8" placeholder="Password (8+ characters)" /><select required id="accountRole"><option value="">I want to…</option><option value="worker">Find work</option><option value="employer">Hire people</option><option value="both">Both</option></select></div><div class="form-section"><div class="form-label">Profile</div><input required type="text" id="profileLocation" placeholder="City, e.g. Bengaluru" /><input type="text" id="profileSkills" placeholder="Skills, separated by commas" /><textarea id="profileBio" maxlength="500" placeholder="Short bio — what do you do or what are you hiring for?"></textarea></div><label class="check-row required-check"><input required type="checkbox" id="truthConfirm" /> <span>I confirm that the information I provide is accurate and I will update it if it changes.</span></label><label class="check-row required-check"><input required type="checkbox" id="termsConfirm" /> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>, <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>, and <a href="safety.html" target="_blank" rel="noopener">Safety Rules</a>.</span></label><div class="legal-warning"><strong>Important:</strong> CinderBurn is a marketplace connecting users; it does not guarantee a job, hire, payment, identity, skill level, or outcome. False, misleading, impersonated, or fraudulent information may lead to removal of the account. Users are responsible for their own decisions, verification, communications, and transactions. CinderBurn is not responsible for losses, injuries, fraud, or disputes arising from a user's false information or interactions with another user, except where liability cannot lawfully be excluded.</div><button class="btn btn-primary" type="submit">Create CinderBurn account</button><div class="form-footnote">We will never ask you to share your password publicly. This prototype stores the demo profile locally; production authentication and secure file storage will be handled by the backend.</div>`;
+}
+
 function openModal(kind){
-  $('modalTitle').textContent = kind === 'signin' ? 'Welcome back' : 'Join CinderBurn';
-  $('modalText').textContent = kind === 'signin' ? 'Sign in to your CinderBurn account.' : 'Create your account and choose whether you are here to hire, get hired, or both.';
-  modalForm.innerHTML = kind === 'signin'
-    ? `<input required type="email" id="accountEmail" placeholder="Email address" /><input required type="password" id="accountPassword" placeholder="Password" /><button class="btn btn-primary" type="submit">Sign in</button>`
-    : `<input required type="text" id="accountName" placeholder="Your name" /><input required type="email" id="accountEmail" placeholder="Email address" /><select required id="accountRole"><option value="">I want to…</option><option>Find work</option><option>Hire people</option><option>Both</option></select><button class="btn btn-primary" type="submit">Create account</button>`;
+  $('modalTitle').textContent = kind === 'signin' ? 'Sign in to CinderBurn' : 'Create your CinderBurn profile';
+  $('modalText').textContent = kind === 'signin' ? 'Use your account email and password.' : 'Build a real profile so employers and talent can understand who they are dealing with.';
+  modalForm.innerHTML = profileForm(kind);
   backdrop.hidden = false;
   backdrop.style.display = 'grid';
+  if(kind !== 'signin') bindSignupForm();
+}
+
+function bindSignupForm(){
+  const photo = $('profilePhoto');
+  photo.addEventListener('change', () => {
+    const file = photo.files?.[0];
+    if(!file) return;
+    if(file.size > 2 * 1024 * 1024){ photo.value=''; showInlineError('Profile picture must be 2 MB or smaller.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      $('profilePreview').innerHTML = `<img src="${e.target.result}" alt="Profile preview" />`;
+      $('profilePreview').dataset.image = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('dateOfBirth').addEventListener('change', () => {
+    const age = ageFromDob($('dateOfBirth').value);
+    $('ageNote').textContent = age === null ? 'Enter your date of birth.' : `Age: ${age}. CinderBurn is currently 18+.`;
+    $('ageNote').classList.toggle('bad', age !== null && age < 18);
+  });
+}
+
+function showInlineError(message){
+  const old = $('formError');
+  if(old) old.remove();
+  const box = document.createElement('div');
+  box.id='formError'; box.className='form-error'; box.textContent=message;
+  modalForm.prepend(box);
 }
 
 document.querySelectorAll('[data-modal]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.modal)));
@@ -130,8 +172,24 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal();
 modalForm.addEventListener('submit', e => {
   e.preventDefault();
   const email = $('accountEmail')?.value || '';
+  if($('dateOfBirth')){
+    const age = ageFromDob($('dateOfBirth').value);
+    if(age === null || age < 18){ showInlineError('You must be 18 or older to create a CinderBurn account.'); return; }
+    if(!$('truthConfirm').checked || !$('termsConfirm').checked){ showInlineError('Please confirm your information and accept the Terms, Privacy Policy, and Safety Rules.'); return; }
+    const profile = {
+      fullName: $('fullName').value.trim(), displayName: $('displayName').value.trim(), age,
+      email, role: $('accountRole').value, location: $('profileLocation').value.trim(),
+      skills: $('profileSkills').value.split(',').map(s=>s.trim()).filter(Boolean),
+      bio: $('profileBio').value.trim(), photo: $('profilePreview')?.dataset.image || null,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('cinderburn_demo_profile', JSON.stringify(profile));
+    localStorage.setItem('cinderburn_demo_user', email);
+    showMessage('Profile created', `Welcome, ${profile.displayName}. Your demo profile is saved on this device. Production signup will send this data to the secure backend.`, 'Continue');
+    return;
+  }
   localStorage.setItem('cinderburn_demo_user', email);
-  showMessage('You are in.', 'Your CinderBurn demo session is saved locally on this device.', 'Continue');
+  showMessage('Signed in', 'Your demo session is active on this device. Production authentication will be connected to the secure backend.', 'Continue');
 });
 
 function openResult(item, action){
@@ -150,4 +208,15 @@ document.addEventListener('click', e => {
   if(item) openResult(item, button.dataset.demoAction);
 });
 
+function addLegalLinks(){
+  const footer = document.querySelector('.footer');
+  if(!footer || document.getElementById('legalLinks')) return;
+  const links = document.createElement('div');
+  links.id='legalLinks';
+  links.className='legal-links';
+  links.innerHTML='<a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="safety.html">Safety</a><a href="verification.html">Verification</a>';
+  footer.appendChild(links);
+}
+
+addLegalLinks();
 render();
