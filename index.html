@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="icon" type="image/x-icon" href="icon.ico" />
-  <meta name="description" content="CinderBurn — hire people and find work. India-first, built for everyone." />
-  <title>CinderBurn — Hire. Get Hired.</title>
-  <meta name="cinderburn-build" content="2026-09-25-live3" />
+  <link rel="icon" type="image/x-icon" href="icon.svg" />
+  <meta name="description" content="DEWIFY — hire people and find work. India-first, built for everyone." />
+  <title>DEWIFY — Hire. Get Hired.</title>
+  <meta name="dewify-build" content="2026-09-25-dewify1" />
   <link rel="stylesheet" href="styles.css?v=20260925-live3" />
 </head>
-<body>
+<body><canvas id="starfield" aria-hidden="true"></canvas>
   <div class="page-shell">
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="CinderBurn home">
-        <span class="brand-mark" aria-hidden="true"><img src="icon.ico" alt="" /></span>
-        <span class="brand-name">CinderBurn</span>
+      <a class="brand" href="#top" aria-label="DEWIFY home">
+        <span class="brand-mark" aria-hidden="true"><img src="icon.svg" alt="" /></span>
+        <span class="brand-name">DEWIFY</span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#jobs">Find Work</a>
@@ -23,59 +23,54 @@
       </nav>
       <div class="nav-actions" id="authActions">
         <button class="btn btn-ghost" data-modal="signin">Log in</button>
-        <button class="btn btn-primary" data-modal="signup">Join CinderBurn</button>
+        <button class="btn btn-primary" data-modal="signup">Join DEWIFY</button>
       </div>
     </header>
 
     <main id="top">
       <section class="hero section-pad">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="pulse"></span> Built in India. Open to the world.</div>
-          <h1>Hire people.<br><span class="accent">Get hired.</span> Move fast.</h1>
-          <p class="hero-sub">CinderBurn brings employers and talent into the same place — searchable, simple, and built around real work.</p>
+          <div class="eyebrow">DEWIFY / HIRING MARKETPLACE</div>
+          <h1>Hire people.<br><span class="accent">Get hired.</span><br>Move faster.</h1>
+          <p class="hero-sub">DEWIFY brings employers and talent into the same place — searchable, simple, and built around real work.</p>
           <div class="hero-ctas">
             <button class="btn btn-primary btn-lg" data-tab-target="jobs">Find a job</button>
             <button class="btn btn-secondary btn-lg" data-tab-target="talent">Hire talent</button>
           </div>
           <div class="trust-row">
-            <span>India-first</span><span>•</span><span>Remote-friendly</span><span>•</span><span>Free to join</span>
+            <span>INDIA FIRST</span><span>•</span><span>REMOTE FRIENDLY</span><span>•</span><span>FREE TO JOIN</span>
           </div>
         </div>
         <div class="hero-panel">
-          <div class="hero-panel-glow"></div>
           <div class="search-card">
-            <div class="mini-label">Universal search</div>
-            <div class="big-search">
-              <span class="search-icon">⌕</span>
-              <input id="heroSearch" type="search" placeholder="Search jobs, people, companies..." autocomplete="off" />
-              <button id="heroSearchBtn" class="search-go">Search</button>
-            </div>
-            <div class="search-chips">
-              <button data-query="React">React</button>
-              <button data-query="Mumbai">Mumbai</button>
-              <button data-query="Remote">Remote</button>
-              <button data-query="Designer">Designer</button>
+            <div class="mini-label">DEWIFY / LIVE MARKETPLACE</div>
+            <div class="status-title">Real work.<br>Real people.</div>
+            <p>Search live job listings, public profiles and companies from the marketplace database.</p>
+            <div class="status-rows">
+              <div><span>LISTINGS</span><strong>LIVE JOBS</strong></div>
+              <div><span>DISCOVERY</span><strong>PEOPLE / COMPANIES</strong></div>
+              <div><span>CONTACT</span><strong>EMAIL / CALL / WHATSAPP</strong></div>
             </div>
           </div>
           <div class="match-stack">
-            <div class="match-head"><span>Real CinderBurn marketplace</span><span class="status-dot">●</span></div>
+            <div class="match-head"><span>DEWIFY / DISCOVER</span><span class="status-dot"></span></div>
             <article class="match-card">
-              <div class="avatar">CB</div>
-              <div class="match-info"><strong>Real listings only</strong><span>Jobs and profiles come from the CinderBurn database.</span></div>
+              <div class="avatar">01</div>
+              <div class="match-info"><strong>Find work</strong><span>Search roles by keyword, skill, city or work type.</span></div>
             </article>
             <article class="match-card">
-              <div class="avatar orange">01</div>
-              <div class="match-info"><strong>No demo jobs</strong><span>Published jobs appear in the marketplace after posting.</span></div>
+              <div class="avatar">02</div>
+              <div class="match-info"><strong>Find talent</strong><span>Open public profiles and inspect skills and bios.</span></div>
             </article>
             <article class="match-card">
-              <div class="avatar violet">PR</div>
-              <div class="match-info"><strong>Your profile</strong><span>Edit your public details from your account menu.</span></div>
+              <div class="avatar">03</div>
+              <div class="match-info"><strong>Connect directly</strong><span>Contact job posters without leaving the listing.</span></div>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="stats section-pad" aria-label="Live CinderBurn marketplace counts">
+      <section class="stats section-pad" aria-label="Live DEWIFY marketplace counts">
         <div><strong id="livePeopleCount">0</strong><span>verified profiles</span></div>
         <div><strong id="liveJobsCount">0</strong><span>live jobs</span></div>
         <div><strong id="liveCompaniesCount">0</strong><span>companies</span></div>
@@ -146,7 +141,7 @@
       <section class="manage section-pad" id="accountWorkspace" hidden>
         <div class="section-head">
           <div>
-            <div class="eyebrow">Your CinderBurn workspace</div>
+            <div class="eyebrow">Your DEWIFY workspace</div>
             <h2>Manage your marketplace activity.</h2>
             <p>Edit or remove your own listings and profile.</p>
           </div>
@@ -192,11 +187,11 @@
       <section class="how section-pad" id="how">
         <div class="section-head center-head">
           <div class="eyebrow">Simple by design</div>
-          <h2>How CinderBurn works</h2>
+          <h2>How DEWIFY works</h2>
           <p>One marketplace. Two sides. Zero nonsense.</p>
         </div>
         <div class="steps">
-          <div class="step"><span>01</span><h4>Create a profile</h4><p>Tell CinderBurn what you do or what you need.</p></div>
+          <div class="step"><span>01</span><h4>Create a profile</h4><p>Tell DEWIFY what you do or what you need.</p></div>
           <div class="step"><span>02</span><h4>Search & discover</h4><p>Use keywords, names, brands, skills and locations.</p></div>
           <div class="step"><span>03</span><h4>Connect</h4><p>Apply, shortlist and message people directly.</p></div>
           <div class="step"><span>04</span><h4>Make it happen</h4><p>Move from profile to real work without the maze.</p></div>
@@ -206,7 +201,7 @@
       <section class="cta section-pad">
         <div class="cta-inner">
           <div>
-            <div class="eyebrow">CinderBurn</div>
+            <div class="eyebrow">DEWIFY</div>
             <h2>The next opportunity is already moving.</h2>
             <p>Join early and help shape India's hiring marketplace from the ground up.</p>
           </div>
@@ -216,16 +211,16 @@
     </main>
 
     <footer class="footer section-pad">
-      <div class="footer-brand"><span class="brand-mark small"><img src="icon.ico" alt="" /></span><span>CinderBurn</span></div>
-      <div class="footer-copy">© 2026 CinderBurn. India first, built to scale. <span class="footer-links"><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="safety.html">Safety</a><a href="verification.html">Verification</a></span></div>
+      <div class="footer-brand"><span class="brand-mark small"><img src="icon.svg" alt="" /></span><span>DEWIFY</span></div>
+      <div class="footer-copy">© 2026 DEWIFY. India first, built to scale. <span class="footer-links"><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="safety.html">Safety</a><a href="verification.html">Verification</a></span></div>
     </footer>
   </div>
 
   <div class="modal-backdrop" id="modalBackdrop" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <button class="modal-close" id="modalClose" aria-label="Close">×</button>
-      <div class="eyebrow" id="modalEyebrow">CinderBurn</div>
-      <h3 id="modalTitle">Join CinderBurn</h3>
+      <div class="eyebrow" id="modalEyebrow">DEWIFY</div>
+      <h3 id="modalTitle">Join DEWIFY</h3>
       <p id="modalText">Create your account and choose whether you're here to hire, get hired, or both.</p>
       <form id="signupForm">
         <input required type="text" placeholder="Your name" />
@@ -236,6 +231,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260925-live3"></script>
+  <script src="stars.js?v=20260925-dewify1" defer></script><script src="app.js?v=20260925-dewify1"></script>
 </body>
 </html>
