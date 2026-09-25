@@ -104,7 +104,7 @@ async function deleteManagedJob(jobId, button) {
 }
 
 async function deleteOwnProfile() {
-  if (!confirm("Delete your CinderBurn profile? Your account, jobs and applications will be permanently removed.")) return;
+  if (!confirm("Delete your DEWIFY profile? Your account, jobs and applications will be permanently removed.")) return;
   const response = await fetch("/api/profile", { method: "DELETE", credentials: "same-origin", cache: "no-store" });
   const body = await response.json();
   if (!response.ok) {
@@ -123,7 +123,7 @@ async function deleteOwnProfile() {
   renderAuthActions();
   updateWorkspaceVisibility();
   render();
-  alert("Your CinderBurn profile has been deleted.");
+  alert("Your DEWIFY profile has been deleted.");
 }
 
 function updateLiveStats() {
@@ -139,7 +139,7 @@ function render() {
   updateLiveStats();
   if (mode === "jobs" && jobsLoading) {
     resultCount.textContent = "Loading jobs";
-    results.innerHTML = '<div class="result-card"><div><div class="result-title">Loading jobs</div><div class="result-meta">Fetching current CinderBurn jobs.</div></div></div>';
+    results.innerHTML = '<div class="result-card"><div><div class="result-title">Loading jobs</div><div class="result-meta">Fetching current DEWIFY jobs.</div></div></div>';
     return;
   }
 
@@ -154,7 +154,7 @@ function render() {
 
   if (!filtered.length) {
     const emptyTitle = mode === "jobs" ? "No jobs posted yet." : mode === "talent" ? "No public profiles yet." : "No companies listed yet.";
-    const emptyText = mode === "jobs" ? "Published jobs will appear here." : mode === "talent" ? "Verified member profiles will appear here." : "Companies created through CinderBurn will appear here.";
+    const emptyText = mode === "jobs" ? "Published jobs will appear here." : mode === "talent" ? "Verified member profiles will appear here." : "Companies created through DEWIFY will appear here.";
     results.innerHTML = '<div class="result-card"><div><div class="result-title">' + emptyTitle + '</div><div class="result-meta">' + emptyText + '</div></div></div>';
     return;
   }
@@ -393,7 +393,7 @@ function signupFormHtml() {
     '<label class="legal-check"><input required name="terms" type="checkbox"> I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>.</label>' +
     '<label class="legal-check"><input required name="privacy" type="checkbox"> I have read the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</label>' +
     '<label class="legal-check"><input required name="safety" type="checkbox"> I agree to the <a href="safety.html" target="_blank" rel="noopener">Safety Rules</a>.</label>' +
-    '<div class="signup-disclaimer"><strong>Important:</strong> CinderBurn is a marketplace connecting users. Verify identities, offers and arrangements independently. CinderBurn does not guarantee a user, employer, job, payment or outcome, and is not responsible for losses or harm caused by false information, misrepresentation, scams or users\' actions, except where applicable law provides otherwise. See our <a href="verification.html" target="_blank" rel="noopener">Verification & Trust</a> guidance.</div>' +
+    '<div class="signup-disclaimer"><strong>Important:</strong> DEWIFY is a marketplace connecting users. Verify identities, offers and arrangements independently. DEWIFY does not guarantee a user, employer, job, payment or outcome, and is not responsible for losses or harm caused by false information, misrepresentation, scams or users\' actions, except where applicable law provides otherwise. See our <a href="verification.html" target="_blank" rel="noopener">Verification & Trust</a> guidance.</div>' +
     '<button class="btn btn-primary" type="submit">Create account</button>' +
     '<div class="form-status" id="formStatus" aria-live="polite"></div>';
 }
@@ -440,7 +440,7 @@ function postJobFormHtml() {
 }
 function showSignup() {
   modalMode = "signup";
-  setModal("Create your CinderBurn account", "Use accurate information. Your email must be verified before you can sign in.", signupFormHtml());
+  setModal("Create your DEWIFY account", "Use accurate information. Your email must be verified before you can sign in.", signupFormHtml());
   const dob = $("dobField");
   const age = $("agePreview");
   const today = new Date();
@@ -477,11 +477,125 @@ function avatarMarkup(user, large) {
     : '<div class="' + className + '">' + escapeHtml(fallback) + '</div>';
 }
 
+function publicAvatarMarkup(user, large) {
+  const raw = user?.avatarUrl || user?.avatar_url || "";
+  const fallback = String(user?.displayName || user?.display_name || user?.name || "?").trim().slice(0, 1).toUpperCase() || "?";
+  const className = large ? "profile-avatar public large" : "profile-avatar public";
+  return raw
+    ? '<div class="' + className + '"><img src="' + escapeHtml(raw) + '" alt=""></div>'
+    : '<div class="' + className + '">' + escapeHtml(fallback) + '</div>';
+}
+
+function normalizeWhatsAppPhone(value) {
+  const raw = String(value || "").trim();
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) digits = "91" + digits;
+  return digits;
+}
+
+function contactActionsHtml(item) {
+  const phone = String(item?.contact_phone || "").trim();
+  const email = String(item?.contact_email || "").trim();
+  const wa = normalizeWhatsAppPhone(phone);
+  const emailAction = email
+    ? '<a class="contact-action" href="mailto:' + encodeURIComponent(email) + '"><span>EMAIL</span><strong>' + escapeHtml(email) + '</strong></a>'
+    : '<div class="contact-action disabled"><span>EMAIL</span><strong>Not provided</strong></div>';
+  const callAction = phone
+    ? '<a class="contact-action" href="tel:' + encodeURIComponent(phone) + '"><span>CALL</span><strong>' + escapeHtml(phone) + '</strong></a>'
+    : '<div class="contact-action disabled"><span>CALL</span><strong>Not provided</strong></div>';
+  const whatsappAction = wa
+    ? '<a class="contact-action" href="https://wa.me/' + wa + '" target="_blank" rel="noopener"><span>WHATSAPP</span><strong>Open chat</strong></a>'
+    : '<div class="contact-action disabled"><span>WHATSAPP</span><strong>Not provided</strong></div>';
+  return '<div class="contact-actions">' + emailAction + callAction + whatsappAction + '</div>';
+}
+
+let activeJobContext = null;
+
+function showPublicUser(user, returnToJob) {
+  const displayName = user?.displayName || user?.display_name || user?.name || "DEWIFY member";
+  const fullName = user?.name || "";
+  const city = user?.city || user?.location || "Location not listed";
+  const country = user?.country || user?.country_code || "IN";
+  const skills = Array.isArray(user?.tags) ? user.tags : String(user?.skills || user?.skills_text || "").split(",").map(x => x.trim()).filter(Boolean);
+  const bio = user?.bio || user?.description || "No public bio added.";
+  const tags = skills.slice(0, 10).map(t => '<span class="tag">' + escapeHtml(t) + '</span>').join("");
+  const back = returnToJob
+    ? '<button type="button" class="btn btn-secondary" id="backToJob">Back to job</button>'
+    : '<button type="button" class="btn btn-secondary" id="modalDone">Close</button>';
+
+  setModal(
+    "Public profile",
+    "Public information shared by this DEWIFY member.",
+    '<div class="public-profile-card">' +
+      '<div class="public-profile-head">' +
+        publicAvatarMarkup({avatarUrl: user?.avatarUrl || user?.avatar_url, displayName, name: fullName}, true) +
+        '<div><div class="public-profile-name">' + escapeHtml(displayName) + '</div>' +
+        (fullName && fullName !== displayName ? '<div class="public-profile-full-name">' + escapeHtml(fullName) + '</div>' : '') +
+        '<div class="public-profile-location">' + escapeHtml(city) + ' · ' + escapeHtml(country) + '</div></div>' +
+      '</div>' +
+      '<div class="profile-grid public-profile-grid">' +
+        '<div><span>CITY</span><strong>' + escapeHtml(city) + '</strong></div>' +
+        '<div><span>COUNTRY</span><strong>' + escapeHtml(country) + '</strong></div>' +
+      '</div>' +
+      '<div class="public-profile-section"><span>SKILLS</span><div class="tag-row">' + (tags || '<span class="public-empty">No skills listed.</span>') + '</div></div>' +
+      '<div class="public-profile-section"><span>BIO</span><p>' + escapeHtml(bio) + '</p></div>' +
+      '</div>' + back
+  );
+
+  if (returnToJob) {
+    $("backToJob").addEventListener("click", () => showJobDetail(returnToJob));
+  } else {
+    $("modalDone").addEventListener("click", closeModal);
+  }
+}
+
+function showJobDetail(item) {
+  activeJobContext = item;
+  const thumbnail = item.thumbnail_url
+    ? '<div class="job-detail-image"><img src="' + escapeHtml(item.thumbnail_url) + '" alt=""></div>'
+    : "";
+  const posterName = item.poster_display_name || item.poster_name || "DEWIFY member";
+  const posterAvatar = item.poster_avatar_url || "";
+  const posterBlock =
+    '<button type="button" class="poster-profile-trigger" id="posterProfileButton">' +
+      publicAvatarMarkup({avatarUrl: posterAvatar, displayName: posterName, name: item.poster_name || posterName}, false) +
+      '<span><small>POSTED BY</small><strong>' + escapeHtml(posterName) + '</strong></span>' +
+      '<b>VIEW PROFILE</b>' +
+    '</button>';
+
+  setModal(
+    item.title,
+    "Job details, poster profile and direct contact options.",
+    thumbnail +
+    posterBlock +
+    '<div class="job-detail-grid">' +
+      '<div><span>COMPANY</span><strong>' + escapeHtml(item.company) + '</strong></div>' +
+      '<div><span>LOCATION</span><strong>' + escapeHtml(item.location || "Not listed") + '</strong></div>' +
+      '<div><span>WORK TYPE</span><strong>' + escapeHtml(item.type || "Not listed") + '</strong></div>' +
+      '<div><span>CATEGORY</span><strong>' + escapeHtml(item.category || "Not listed") + '</strong></div>' +
+      '<div><span>SALARY</span><strong>' + escapeHtml(item.pay || "Not listed") + '</strong></div>' +
+    '</div>' +
+    '<div class="job-detail-description">' + escapeHtml(item.description || "No description provided.") + '</div>' +
+    contactActionsHtml(item) +
+    '<button type="button" class="btn btn-secondary" id="modalDone">Close</button>'
+  );
+  $("posterProfileButton").addEventListener("click", () => showPublicUser({
+    displayName: posterName,
+    name: item.poster_name || posterName,
+    city: item.poster_city,
+    country: item.poster_country,
+    skills: item.poster_skills,
+    bio: item.poster_bio,
+    avatarUrl: posterAvatar
+  }, item));
+  $("modalDone").addEventListener("click", closeModal);
+}
+
 function renderAuthActions() {
   const host = $("authActions");
   if (!host) return;
   if (!currentUser) {
-    host.innerHTML = '<button class="btn btn-ghost" data-modal="signin">Sign in</button><button class="btn btn-primary" data-modal="signup">Join CinderBurn</button>';
+    host.innerHTML = '<button class="btn btn-ghost" data-modal="signin">Sign in</button><button class="btn btn-primary" data-modal="signup">Join DEWIFY</button>';
     bindAuthButtons();
     return;
   }
@@ -497,7 +611,7 @@ function bindAuthButtons() {
       if (btn.dataset.modal === "signup") showSignup();
       else {
         modalMode = "signin";
-        setModal("Welcome back", "Sign in with your verified CinderBurn email.", loginFormHtml());
+        setModal("Welcome back", "Sign in with your verified DEWIFY email.", loginFormHtml());
       }
     };
   });
@@ -532,14 +646,14 @@ function editProfileFormHtml() {
 
 function showProfile() {
   modalMode = "profile";
-  setModal("Your CinderBurn profile", "This is the account currently connected to this browser.", profileFormHtml());
+  setModal("Your DEWIFY profile", "This is the account currently connected to this browser.", profileFormHtml());
   $("editProfileButton").addEventListener("click", showEditProfile);
   $("signOutButton").addEventListener("click", signOut);
 }
 
 function showEditProfile() {
   modalMode = "edit-profile";
-  setModal("Edit your profile", "Update the profile information that other CinderBurn users can see.", editProfileFormHtml());
+  setModal("Edit your profile", "Update the profile information that other DEWIFY users can see.", editProfileFormHtml());
   $("cancelEditProfile").addEventListener("click", showProfile);
   initImageEditor("editProfileImage", 1, 512);
 }
@@ -554,7 +668,7 @@ function showEditJob(item) {
 
 function showPostJob() {
   modalMode = "post-job";
-  setModal("Post a job", "Publish a role directly from your CinderBurn account.", postJobFormHtml());
+  setModal("Post a job", "Publish a role directly from your DEWIFY account.", postJobFormHtml());
   initImageEditor("jobImage", 16 / 9, 960);
 }
 
@@ -793,7 +907,7 @@ document.querySelectorAll("[data-tab-target]").forEach(btn => btn.addEventListen
 $("postJobButton").addEventListener("click", () => {
   if (!currentUser) {
     modalMode = "signin";
-    setModal("Sign in to post a job", "Create or sign in to your CinderBurn account before posting a role.", loginFormHtml());
+    setModal("Sign in to post a job", "Create or sign in to your DEWIFY account before posting a role.", loginFormHtml());
     return;
   }
   showPostJob();
@@ -873,40 +987,28 @@ document.addEventListener("click", async e => {
   if (!item) return;
   const action = button.dataset.resultAction;
   if (action === "View job") {
-    const thumbnail = item.thumbnail_url
-      ? '<div class="job-detail-image"><img src="' + escapeHtml(item.thumbnail_url) + '" alt=""></div>'
-      : "";
-    const contacts = '<div class="job-contact-grid">' +
-      '<a class="contact-card" href="tel:' + encodeURIComponent(item.contact_phone || "") + '"><span>Phone</span><strong>' + escapeHtml(item.contact_phone || "Not provided") + '</strong></a>' +
-      '<a class="contact-card" href="mailto:' + encodeURIComponent(item.contact_email || "") + '"><span>Email</span><strong>' + escapeHtml(item.contact_email || "Not provided") + '</strong></a>' +
-      '</div>';
-    setModal(
-      item.title,
-      "Brief job information and direct contact details.",
-      thumbnail +
-      '<div class="job-detail-grid">' +
-        '<div><span>Company</span><strong>' + escapeHtml(item.company) + '</strong></div>' +
-        '<div><span>Location</span><strong>' + escapeHtml(item.location || "Not listed") + '</strong></div>' +
-        '<div><span>Work type</span><strong>' + escapeHtml(item.type || "Not listed") + '</strong></div>' +
-        '<div><span>Category</span><strong>' + escapeHtml(item.category || "Not listed") + '</strong></div>' +
-        '<div><span>Salary</span><strong>' + escapeHtml(item.pay || "Not listed") + '</strong></div>' +
-      '</div>' +
-      '<div class="job-detail-description">' + escapeHtml(item.description || "No description provided.") + '</div>' +
-      contacts +
-      '<button type="button" class="btn btn-secondary" id="modalDone">Close</button>'
-    );
-    $("modalDone").addEventListener("click", closeModal);
+    showJobDetail(item);
+    return;
+  }
+  if (action === "View profile") {
+    showPublicUser({
+      displayName: item.title,
+      name: item.full_name || item.title,
+      city: item.location,
+      country: item.country || "IN",
+      skills: item.tags || [],
+      bio: item.description,
+      avatarUrl: item.avatar_url || ""
+    }, null);
     return;
   }
   setModal(
     item.title,
-    item.description + " " + (item.location || "Location not listed") + " · " + item.type + " · " + (item.pay || "Salary not listed"),
+    item.description + " " + (item.location || "Location not listed") + " · " + item.type + " · " + (item.pay || "Not listed"),
     '<div class="tag-row">' + (item.tags || []).map(t => '<span class="tag">' + escapeHtml(t) + '</span>').join("") + '</div>' +
-    '<button type="button" class="btn btn-primary" id="resultAction">' +
-    (action === "View profile" ? "Contact this person" : "View open roles") +
-    '</button>'
+    '<button type="button" class="btn btn-secondary" id="resultAction">Close</button>'
   );
-  $("resultAction").addEventListener("click", () => showInfo("CinderBurn", "This profile is loaded from the CinderBurn database."));
+  $("resultAction").addEventListener("click", closeModal);
 });
 
 bindAuthButtons();
