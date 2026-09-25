@@ -7,7 +7,7 @@
   <meta name="description" content="CinderBurn — hire people and find work. India-first, built for everyone." />
   <title>CinderBurn — Hire. Get Hired.</title>
   <meta name="cinderburn-build" content="2026-09-25-live2" />
-  <link rel="stylesheet" href="styles.css?v=20260925-live2" />
+  <link rel="stylesheet" href="styles.css?v=20260925-live3" />
 </head>
 <body>
   <div class="page-shell">
@@ -143,6 +143,37 @@
         </div>
       </section>
 
+      <section class="manage section-pad" id="accountWorkspace" hidden>
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Your CinderBurn workspace</div>
+            <h2>Manage your marketplace activity.</h2>
+            <p>Edit or remove your own listings and profile.</p>
+          </div>
+        </div>
+        <div class="manage-grid">
+          <article class="manage-card">
+            <div class="manage-card-head">
+              <div>
+                <div class="split-tag">YOUR JOBS</div>
+                <h3>Jobs you've posted</h3>
+              </div>
+              <button class="btn btn-light manage-post-btn" id="managePostJobButton" type="button">Post a job</button>
+            </div>
+            <div id="myJobsList" class="manage-list"></div>
+          </article>
+          <article class="manage-card">
+            <div class="split-tag">YOUR PROFILE</div>
+            <h3>Job seeker profile</h3>
+            <div id="myProfileCard" class="manage-profile"></div>
+            <div class="manage-actions">
+              <button class="btn btn-primary" id="manageEditProfileButton" type="button">Edit profile</button>
+              <button class="btn btn-danger" id="manageDeleteProfileButton" type="button">Delete profile</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       <section class="split-section section-pad" id="talent">
         <div class="split-card worker-card">
           <div class="split-tag">FOR TALENT</div>
@@ -205,6 +236,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260925-live2"></script>
+  <script src="app.js?v=20260925-live3"></script>
 </body>
 </html>
