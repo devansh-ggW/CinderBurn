@@ -4,11 +4,17 @@ function error(message, status) {
   return json({ ok: false, error: message }, status || 400);
 }
 
-async function ensureThumbnailColumn(env) {
+async function ensureJobContactColumns(env) {
   const info = await env.DB.prepare("PRAGMA table_info(jobs)").all();
-  const exists = (info.results || []).some(row => row.name === "thumbnail_url");
-  if (!exists) {
+  const names = new Set((info.results || []).map(row => row.name));
+  if (!names.has("thumbnail_url")) {
     await env.DB.prepare("ALTER TABLE jobs ADD COLUMN thumbnail_url TEXT").run();
+  }
+  if (!names.has("contact_phone")) {
+    await env.DB.prepare("ALTER TABLE jobs ADD COLUMN contact_phone TEXT").run();
+  }
+  if (!names.has("contact_email")) {
+    await env.DB.prepare("ALTER TABLE jobs ADD COLUMN contact_email TEXT").run();
   }
 }
 
@@ -24,9 +30,9 @@ async function getSessionUser(env, request) {
 export async function onRequestGet({ env }) {
   if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
   try {
-    await ensureThumbnailColumn(env);
+    await ensureJobContactColumns(env);
     const result = await env.DB.prepare(
-      "SELECT j.id, j.title, c.name AS company, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
+      "SELECT j.id, j.title, c.name AS company, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
     ).all();
 
     return json({
@@ -42,7 +48,9 @@ export async function onRequestGet({ env }) {
         pay: row.salary_min != null || row.salary_max != null ? formatSalary(row.salary_min, row.salary_max) : "Salary not listed",
         tags: [],
         description: row.description || "",
-        thumbnail_url: row.thumbnail_url || null
+        thumbnail_url: row.thumbnail_url || null,
+        contact_phone: row.contact_phone || null,
+        contact_email: row.contact_email || null
       }))
     });
   } catch (err) {
@@ -63,7 +71,7 @@ export async function onRequestPost({ request, env }) {
   if (!user) return error("Please sign in before posting a job.", 401);
 
   try {
-    await ensureThumbnailColumn(env);
+    await ensureJobContactColumns(env);
     const body = await request.json();
     const title = String(body.title || "").trim();
     const company = String(body.company || "").trim();
@@ -72,14 +80,19 @@ export async function onRequestPost({ request, env }) {
     const category = String(body.category || "");
     const description = String(body.description || "").trim();
     const thumbnailUrl = String(body.thumbnailUrl || "").trim();
+    const contactPhone = String(body.contactPhone || "").trim();
+    const contactEmail = String(body.contactEmail || "").trim();
     const salaryMin = body.salaryMin == null || body.salaryMin === "" ? null : Number(body.salaryMin);
     const salaryMax = body.salaryMax == null || body.salaryMax === "" ? null : Number(body.salaryMax);
 
     if (title.length < 2 || title.length > 120) return error("Enter a valid job title.");
     if (company.length < 2 || company.length > 100) return error("Enter a valid company name.");
     if (location.length > 100) return error("Location is too long.");
-    if (thumbnailUrl.length > 1000) return error("Thumbnail URL is too long.");
-    if (thumbnailUrl && !/^https?:\/\//i.test(thumbnailUrl)) return error("Thumbnail must be a valid http or https URL.");
+    if (thumbnailUrl.length > 300000) return error("Thumbnail image is too large. Please choose a smaller image.");
+    if (thumbnailUrl && !/^data:image\/(webp|jpeg|png);base64,/i.test(thumbnailUrl)) return error("Thumbnail must be a processed image.");
+    if (contactPhone.length < 5 || contactPhone.length > 40) return error("Enter a valid contact phone number.");
+    if (!/^\+?[0-9().\-\s]{5,40}$/.test(contactPhone)) return error("Enter a valid contact phone number.");
+    if (contactEmail.length < 5 || contactEmail.length > 160 || !/^\S+@\S+\.\S+$/.test(contactEmail)) return error("Enter a valid contact email address.");
     if (!["Remote", "Hybrid", "On-site"].includes(workType)) return error("Choose a valid work type.");
     if (!["Technology", "Design", "Marketing", "Sales", "Content"].includes(category)) return error("Choose a valid category.");
     if (description.length < 20 || description.length > 4000) return error("Add a more detailed job description.");
@@ -103,8 +116,8 @@ export async function onRequestPost({ request, env }) {
 
     const jobId = crypto.randomUUID();
     await env.DB.prepare(
-      "INSERT INTO jobs (id, company_id, title, description, country_code, location, work_type, category, salary_min, salary_max, thumbnail_url, status) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, 'open')"
-    ).bind(jobId, companyRow.id, title, description, location || null, workType, category, salaryMin, salaryMax, thumbnailUrl || null).run();
+      "INSERT INTO jobs (id, company_id, title, description, country_code, location, work_type, category, salary_min, salary_max, thumbnail_url, contact_phone, contact_email, status) VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, ?, ?, 'open')"
+    ).bind(jobId, companyRow.id, title, description, location || null, workType, category, salaryMin, salaryMax, thumbnailUrl || null, contactPhone, contactEmail).run();
 
     return json({ ok: true, message: "Your job has been published." }, 201);
   } catch (err) {
