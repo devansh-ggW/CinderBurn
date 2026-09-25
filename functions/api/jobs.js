@@ -27,12 +27,13 @@ async function getSessionUser(env, request) {
   ).bind(hash, new Date().toISOString()).first();
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ env, request }) {
   if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
   try {
     await ensureJobContactColumns(env);
+    const viewer = await getSessionUser(env, request);
     const result = await env.DB.prepare(
-      "SELECT j.id, j.title, c.name AS company, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
+      "SELECT j.id, j.title, c.name AS company, c.owner_user_id, j.location, j.work_type, j.category, j.salary_min, j.salary_max, j.description, j.thumbnail_url, j.contact_phone, j.contact_email FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.status = 'open' ORDER BY j.created_at DESC"
     ).all();
 
     return json({
@@ -50,7 +51,8 @@ export async function onRequestGet({ env }) {
         description: row.description || "",
         thumbnail_url: row.thumbnail_url || null,
         contact_phone: row.contact_phone || null,
-        contact_email: row.contact_email || null
+        contact_email: row.contact_email || null,
+        can_delete: Boolean(viewer && viewer.id === row.owner_user_id)
       }))
     });
   } catch (err) {
@@ -122,5 +124,31 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: true, message: "Your job has been published." }, 201);
   } catch (err) {
     return error(err && err.message ? err.message : "Unable to publish the job.", 500);
+  }
+}
+
+
+export async function onRequestDelete({ request, env }) {
+  if (!env.DB) return error("CinderBurn database is not configured yet.", 503);
+  const user = await getSessionUser(env, request);
+  if (!user) return error("Please sign in before deleting a job.", 401);
+
+  try {
+    const url = new URL(request.url);
+    const jobId = String(url.searchParams.get("id") || "").trim();
+    if (!jobId) return error("Job id is required.");
+
+    const row = await env.DB.prepare(
+      "SELECT j.id FROM jobs j JOIN companies c ON c.id = j.company_id WHERE j.id = ? AND c.owner_user_id = ? LIMIT 1"
+    ).bind(jobId, user.id).first();
+
+    if (!row) return error("You can only delete jobs that you posted.", 403);
+
+    await env.DB.prepare("DELETE FROM applications WHERE job_id = ?").bind(jobId).run();
+    await env.DB.prepare("DELETE FROM jobs WHERE id = ?").bind(jobId).run();
+
+    return json({ ok: true, message: "Job deleted." });
+  } catch (err) {
+    return error(err && err.message ? err.message : "Unable to delete the job.", 500);
   }
 }
