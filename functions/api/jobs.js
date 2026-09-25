@@ -79,7 +79,7 @@ export async function onRequestPost({ request, env }) {
     if (company.length < 2 || company.length > 100) return error("Enter a valid company name.");
     if (location.length > 100) return error("Location is too long.");
     if (thumbnailUrl.length > 1000) return error("Thumbnail URL is too long.");
-    if (thumbnailUrl && !/^https?:\\/\\//i.test(thumbnailUrl)) return error("Thumbnail must be a valid http or https URL.");
+    if (thumbnailUrl && !/^https?:\/\//i.test(thumbnailUrl)) return error("Thumbnail must be a valid http or https URL.");
     if (!["Remote", "Hybrid", "On-site"].includes(workType)) return error("Choose a valid work type.");
     if (!["Technology", "Design", "Marketing", "Sales", "Content"].includes(category)) return error("Choose a valid category.");
     if (description.length < 20 || description.length > 4000) return error("Add a more detailed job description.");
