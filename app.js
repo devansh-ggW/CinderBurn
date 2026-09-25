@@ -166,11 +166,125 @@ function setModal(title, text, formHtml) {
   backdrop.style.display = "grid";
 }
 
-function signupFormHtml() {
-  return '<div class="profile-picker">' +
-    '<div class="avatar-preview" id="avatarPreview">+</div>' +
-    '<div><label class="file-label">Profile picture<input id="profilePicture" name="profile_picture" type="file" accept="image/*"></label><div class="field-help">Optional • PNG/JPG/WebP • max 5 MB • kept on this device for now</div></div>' +
+
+const imageEditors = new Map();
+
+function imageEditorHtml(prefix, label, aspectText) {
+  return '<div class="image-editor-block">' +
+    '<label class="field-label">' + escapeHtml(label) + '</label>' +
+    '<div class="image-dropzone" id="' + prefix + 'Drop" tabindex="0">' +
+      '<div class="image-drop-icon">+</div>' +
+      '<strong>Drag & drop an image here</strong>' +
+      '<span>or click to choose a file</span>' +
+      '<small>JPG, PNG or WebP • max 5 MB • ' + escapeHtml(aspectText) + '</small>' +
+      '<input id="' + prefix + 'Input" type="file" accept="image/*" hidden>' +
     '</div>' +
+    '<div class="image-editor" id="' + prefix + 'Editor" hidden>' +
+      '<canvas id="' + prefix + 'Canvas"></canvas>' +
+      '<div class="image-adjustments">' +
+        '<label>Zoom<input id="' + prefix + 'Zoom" type="range" min="1" max="3" step="0.01" value="1"></label>' +
+        '<label>Horizontal<input id="' + prefix + 'X" type="range" min="-100" max="100" step="1" value="0"></label>' +
+        '<label>Vertical<input id="' + prefix + 'Y" type="range" min="-100" max="100" step="1" value="0"></label>' +
+      '</div>' +
+      '<button type="button" class="btn btn-secondary image-reset" id="' + prefix + 'Reset">Reset crop</button>' +
+    '</div>' +
+    '<input id="' + prefix + 'Output" type="hidden">' +
+  '</div>';
+}
+
+function initImageEditor(prefix, aspectRatio, outputWidth) {
+  const drop = $(prefix + "Drop");
+  const input = $(prefix + "Input");
+  const editor = $(prefix + "Editor");
+  const canvas = $(prefix + "Canvas");
+  const zoom = $(prefix + "Zoom");
+  const xRange = $(prefix + "X");
+  const yRange = $(prefix + "Y");
+  const reset = $(prefix + "Reset");
+  const output = $(prefix + "Output");
+  if (!drop || !input || !editor || !canvas || !zoom || !xRange || !yRange || !reset || !output) return;
+
+  const ctx = canvas.getContext("2d");
+  const state = { image: null, zoom: 1, x: 0, y: 0, aspect: aspectRatio, outputWidth };
+
+  const draw = () => {
+    if (!state.image) return;
+    const frameW = outputWidth;
+    const frameH = Math.round(outputWidth / aspectRatio);
+    canvas.width = frameW;
+    canvas.height = frameH;
+    ctx.clearRect(0, 0, frameW, frameH);
+
+    const coverScale = Math.max(frameW / state.image.naturalWidth, frameH / state.image.naturalHeight) * state.zoom;
+    const drawW = state.image.naturalWidth * coverScale;
+    const drawH = state.image.naturalHeight * coverScale;
+    const maxX = Math.max(0, (drawW - frameW) / 2);
+    const maxY = Math.max(0, (drawH - frameH) / 2);
+    const dx = (frameW - drawW) / 2 + (state.x / 100) * maxX;
+    const dy = (frameH - drawH) / 2 + (state.y / 100) * maxY;
+
+    ctx.drawImage(state.image, dx, dy, drawW, drawH);
+    output.value = canvas.toDataURL("image/webp", 0.78);
+
+    const preview = $(prefix + "Preview");
+    if (preview) preview.innerHTML = '<img src="' + escapeHtml(output.value) + '" alt="">';
+  };
+
+  const loadFile = file => {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+      setFormStatus("formStatus", "Choose an image smaller than 5 MB.", true);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        state.image = img;
+        state.zoom = 1;
+        state.x = 0;
+        state.y = 0;
+        zoom.value = "1";
+        xRange.value = "0";
+        yRange.value = "0";
+        editor.hidden = false;
+        draw();
+      };
+      img.src = String(e.target.result || "");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
+  });
+  input.addEventListener("change", () => loadFile(input.files?.[0]));
+
+  ["dragenter", "dragover"].forEach(type => drop.addEventListener(type, e => {
+    e.preventDefault();
+    drop.classList.add("dragging");
+  }));
+  ["dragleave", "drop"].forEach(type => drop.addEventListener(type, e => {
+    e.preventDefault();
+    drop.classList.remove("dragging");
+  }));
+  drop.addEventListener("drop", e => loadFile(e.dataTransfer?.files?.[0]));
+
+  zoom.addEventListener("input", () => { state.zoom = Number(zoom.value); draw(); });
+  xRange.addEventListener("input", () => { state.x = Number(xRange.value); draw(); });
+  yRange.addEventListener("input", () => { state.y = Number(yRange.value); draw(); });
+  reset.addEventListener("click", () => {
+    state.zoom = 1; state.x = 0; state.y = 0;
+    zoom.value = "1"; xRange.value = "0"; yRange.value = "0";
+    draw();
+  });
+
+  imageEditors.set(prefix, { getDataUrl: () => output.value });
+}
+
+function signupFormHtml() {
+  return imageEditorHtml("profile", "Profile picture", "square crop") +
     '<div class="form-grid-two">' +
     '<input required name="name" type="text" placeholder="Full legal name">' +
     '<input required name="display_name" type="text" placeholder="Display name">' +
@@ -195,7 +309,6 @@ function signupFormHtml() {
     '<button class="btn btn-primary" type="submit">Create account</button>' +
     '<div class="form-status" id="formStatus" aria-live="polite"></div>';
 }
-
 function loginFormHtml() {
   return '<input required id="loginEmail" type="email" placeholder="Email address">' +
     '<input required id="loginPassword" type="password" placeholder="Password">' +
@@ -205,12 +318,7 @@ function loginFormHtml() {
 }
 
 function postJobFormHtml() {
-  return '<div class="job-thumbnail-field">' +
-    '<label class="field-label">Job thumbnail URL</label>' +
-    '<input id="jobThumbnail" type="url" maxlength="1000" placeholder="https://example.com/job-image.jpg">' +
-    '<div class="field-help">Use a public image URL. JPG, PNG and WebP work best.</div>' +
-    '<div class="job-thumbnail-preview" id="jobThumbnailPreview"><span>Preview</span></div>' +
-    '</div>' +
+  return imageEditorHtml("jobImage", "Job thumbnail", "16:9 crop") +
     '<input required id="jobTitle" type="text" maxlength="120" placeholder="Job title">' +
     '<input required id="companyName" type="text" maxlength="100" placeholder="Company name">' +
     '<input id="jobLocation" type="text" maxlength="100" placeholder="Location (e.g. Mumbai or Remote)">' +
@@ -218,10 +326,14 @@ function postJobFormHtml() {
     '<select required id="jobCategory"><option value="">Category</option><option>Technology</option><option>Design</option><option>Marketing</option><option>Sales</option><option>Content</option></select>' +
     '<div class="form-grid-two"><input id="salaryMin" type="number" min="0" placeholder="Minimum salary (₹)"><input id="salaryMax" type="number" min="0" placeholder="Maximum salary (₹)"></div>' +
     '<textarea required id="jobDescription" maxlength="4000" rows="6" placeholder="Describe the role, responsibilities and what you are looking for."></textarea>' +
+    '<div class="form-grid-two">' +
+      '<input required id="jobContactPhone" type="tel" maxlength="40" placeholder="Contact phone number">' +
+      '<input required id="jobContactEmail" type="email" maxlength="160" placeholder="Contact email address">' +
+    '</div>' +
+    '<div class="field-help">These contact details will be shown to people who open the job.</div>' +
     '<button class="btn btn-primary" type="submit">Publish job</button>' +
     '<div class="form-status" id="formStatus" aria-live="polite"></div>';
 }
-
 function showSignup() {
   modalMode = "signup";
   setModal("Create your CinderBurn account", "Use accurate information. Your email must be verified before you can sign in.", signupFormHtml());
@@ -238,21 +350,7 @@ function showSignup() {
     age.value = String(years);
     age.style.color = years >= 18 ? "#9de6af" : "#ff8f8f";
   });
-
-  const picker = $("profilePicture");
-  picker.addEventListener("change", () => {
-    const file = picker.files && picker.files[0];
-    if (!file) { $("avatarPreview").textContent = "+"; return; }
-    if (file.size > 5 * 1024 * 1024 || !file.type.startsWith("image/")) {
-      picker.value = "";
-      $("avatarPreview").textContent = "+";
-      setFormStatus("formStatus", "Choose an image smaller than 5 MB.", true);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = e => $("avatarPreview").innerHTML = '<img src="' + e.target.result + '" alt="">';
-    reader.readAsDataURL(file);
-  });
+  initImageEditor("profile", 1, 512);
 }
 
 function setFormStatus(id, message, bad) {
@@ -317,7 +415,9 @@ function profileFormHtml() {
 }
 
 function editProfileFormHtml() {
-  return '<input required id="editDisplayName" type="text" maxlength="40" value="' + escapeHtml(currentUser.displayName || "") + '" placeholder="Display name">' +
+  return imageEditorHtml("editProfileImage", "Profile picture", "square crop") +
+    '<div class="image-current-note">' + (currentUser.avatarUrl ? "Choose a new image to replace your current picture." : "Add a profile picture so people can recognize your profile.") + '</div>' +
+    '<input required id="editDisplayName" type="text" maxlength="40" value="' + escapeHtml(currentUser.displayName || "") + '" placeholder="Display name">' +
     '<input id="editCity" type="text" maxlength="80" value="' + escapeHtml(currentUser.city || "") + '" placeholder="City">' +
     '<input id="editSkills" type="text" maxlength="500" value="' + escapeHtml(currentUser.skills || "") + '" placeholder="Skills">' +
     '<textarea id="editBio" maxlength="1200" rows="5" placeholder="Short bio">' + escapeHtml(currentUser.bio || "") + '</textarea>' +
@@ -337,18 +437,13 @@ function showEditProfile() {
   modalMode = "edit-profile";
   setModal("Edit your profile", "Update the profile information that other CinderBurn users can see.", editProfileFormHtml());
   $("cancelEditProfile").addEventListener("click", showProfile);
+  initImageEditor("editProfileImage", 1, 512);
 }
 
 function showPostJob() {
   modalMode = "post-job";
   setModal("Post a job", "Publish a role directly from your CinderBurn account.", postJobFormHtml());
-  $("jobThumbnail").addEventListener("input", () => {
-    const url = $("jobThumbnail").value.trim();
-    const preview = $("jobThumbnailPreview");
-    preview.innerHTML = url
-      ? '<img src="' + escapeHtml(url) + '" alt="" onerror="this.style.display=\'none\'"><span>Preview</span>'
-      : '<span>Preview</span>';
-  });
+  initImageEditor("jobImage", 16 / 9, 960);
 }
 
 async function submitSignup(form) {
@@ -361,11 +456,9 @@ async function submitSignup(form) {
       setFormStatus("formStatus", body.error || "Unable to create your account.", true);
       return;
     }
-    const picture = $("profilePicture")?.files?.[0];
-    if (picture) {
-      const reader = new FileReader();
-      reader.onload = e => { try { localStorage.setItem("cinderburn_profile_picture", String(e.target.result || "")); } catch {} };
-      reader.readAsDataURL(picture);
+    const profileImage = imageEditors.get("profile")?.getDataUrl() || "";
+    if (profileImage) {
+      try { localStorage.setItem("cinderburn_profile_picture", profileImage); } catch {}
     }
     showInfo("Check your email", body.message + " The message will come from cinderburn@cinderburn.dewify.shop.");
   } catch {
@@ -409,7 +502,9 @@ async function submitPostJob() {
     salaryMin: $("salaryMin").value ? Number($("salaryMin").value) : null,
     salaryMax: $("salaryMax").value ? Number($("salaryMax").value) : null,
     description: $("jobDescription").value.trim(),
-    thumbnailUrl: $("jobThumbnail").value.trim()
+    contactPhone: $("jobContactPhone").value.trim(),
+    contactEmail: $("jobContactEmail").value.trim(),
+    thumbnailUrl: imageEditors.get("jobImage")?.getDataUrl() || ""
   };
   setFormStatus("formStatus", "Publishing job");
   try {
@@ -440,7 +535,8 @@ async function submitEditProfile() {
     displayName: $("editDisplayName").value.trim(),
     city: $("editCity").value.trim(),
     skills: $("editSkills").value.trim(),
-    bio: $("editBio").value.trim()
+    bio: $("editBio").value.trim(),
+    avatarDataUrl: imageEditors.get("editProfileImage")?.getDataUrl() || ""
   };
   setFormStatus("formStatus", "Saving changes");
   try {
@@ -562,18 +658,41 @@ document.addEventListener("click", e => {
   const item = getVisibleItems()[Number(button.dataset.resultIndex)];
   if (!item) return;
   const action = button.dataset.resultAction;
-  setModal(item.title, item.description + " " + (item.location || "Location not listed") + " · " + item.type + " · " + (item.pay || "Salary not listed"),
+  if (action === "View job") {
+    const thumbnail = item.thumbnail_url
+      ? '<div class="job-detail-image"><img src="' + escapeHtml(item.thumbnail_url) + '" alt=""></div>'
+      : "";
+    const contacts = '<div class="job-contact-grid">' +
+      '<a class="contact-card" href="tel:' + encodeURIComponent(item.contact_phone || "") + '"><span>Phone</span><strong>' + escapeHtml(item.contact_phone || "Not provided") + '</strong></a>' +
+      '<a class="contact-card" href="mailto:' + encodeURIComponent(item.contact_email || "") + '"><span>Email</span><strong>' + escapeHtml(item.contact_email || "Not provided") + '</strong></a>' +
+      '</div>';
+    setModal(
+      item.title,
+      "Brief job information and direct contact details.",
+      thumbnail +
+      '<div class="job-detail-grid">' +
+        '<div><span>Company</span><strong>' + escapeHtml(item.company) + '</strong></div>' +
+        '<div><span>Location</span><strong>' + escapeHtml(item.location || "Not listed") + '</strong></div>' +
+        '<div><span>Work type</span><strong>' + escapeHtml(item.type || "Not listed") + '</strong></div>' +
+        '<div><span>Category</span><strong>' + escapeHtml(item.category || "Not listed") + '</strong></div>' +
+        '<div><span>Salary</span><strong>' + escapeHtml(item.pay || "Not listed") + '</strong></div>' +
+      '</div>' +
+      '<div class="job-detail-description">' + escapeHtml(item.description || "No description provided.") + '</div>' +
+      contacts +
+      '<button type="button" class="btn btn-secondary" id="modalDone">Close</button>'
+    );
+    $("modalDone").addEventListener("click", closeModal);
+    return;
+  }
+  setModal(
+    item.title,
+    item.description + " " + (item.location || "Location not listed") + " · " + item.type + " · " + (item.pay || "Salary not listed"),
     '<div class="tag-row">' + (item.tags || []).map(t => '<span class="tag">' + escapeHtml(t) + '</span>').join("") + '</div>' +
     '<button type="button" class="btn btn-primary" id="resultAction">' +
-    (action === "View job" ? "Apply for this job" : action === "View profile" ? "Contact this person" : "View open roles") +
-    '</button>');
-  $("resultAction").addEventListener("click", () => {
-    if (action === "View job") {
-      showInfo("Applications", "The job is real and published in CinderBurn. Application submission will be connected next.");
-    } else {
-      showInfo("Profile", "This profile is loaded from the CinderBurn database.");
-    }
-  });
+    (action === "View profile" ? "Contact this person" : "View open roles") +
+    '</button>'
+  );
+  $("resultAction").addEventListener("click", () => showInfo("CinderBurn", "This profile is loaded from the CinderBurn database."));
 });
 
 bindAuthButtons();
