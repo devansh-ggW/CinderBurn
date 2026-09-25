@@ -448,6 +448,7 @@ function showPostJob() {
 
 async function submitSignup(form) {
   const fd = new FormData(form);
+  fd.set("avatar_data_url", imageEditors.get("profile")?.getDataUrl() || "");
   setFormStatus("formStatus", "Creating your account");
   try {
     const response = await fetch("/api/signup", { method: "POST", body: fd, credentials: "same-origin" });
