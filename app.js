@@ -875,14 +875,18 @@ document.querySelectorAll(".search-chips button").forEach(btn => btn.addEventLis
   render();
 }));
 
-$("heroSearchBtn").addEventListener("click", () => {
-  $("marketSearch").value = $("heroSearch").value;
-  $("jobs").scrollIntoView({behavior:"auto"});
-  mode = "jobs";
-  document.querySelectorAll(".seg").forEach(b => b.classList.toggle("active", b.dataset.mode === "jobs"));
-  render();
-});
-$("heroSearch").addEventListener("keydown", e => { if (e.key === "Enter") $("heroSearchBtn").click(); });
+const heroSearchBtn = $("heroSearchBtn");
+const heroSearch = $("heroSearch");
+if (heroSearchBtn && heroSearch) {
+  heroSearchBtn.addEventListener("click", () => {
+    $("marketSearch").value = heroSearch.value;
+    $("jobs").scrollIntoView({behavior:"auto"});
+    mode = "jobs";
+    document.querySelectorAll(".seg").forEach(b => b.classList.toggle("active", b.dataset.mode === "jobs"));
+    render();
+  });
+  heroSearch.addEventListener("keydown", e => { if (e.key === "Enter") heroSearchBtn.click(); });
+}
 $("marketSearchBtn").addEventListener("click", render);
 $("marketSearch").addEventListener("keydown", e => { if (e.key === "Enter") render(); });
 ["locationFilter","categoryFilter","experienceFilter"].forEach(id => $(id).addEventListener("change", render));
